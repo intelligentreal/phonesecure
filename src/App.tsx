@@ -9,6 +9,7 @@ import { AntiTheftView } from './components/AntiTheftView';
 import { NetworkDefenseView } from './components/NetworkDefenseView';
 import { SecureVaultView } from './components/SecureVaultView';
 import { AiCyberAdvisorView } from './components/AiCyberAdvisorView';
+import { ForensicCoreView } from './components/ForensicCoreView';
 import { DiagnosticsView } from './components/DiagnosticsView';
 import { EmergencySosModal } from './components/EmergencySosModal';
 import { RemoteLockOverlay } from './components/RemoteLockOverlay';
@@ -400,6 +401,8 @@ export default function App() {
             )}
 
             {activeTab === 'ai_advisor' && <AiCyberAdvisorView />}
+
+            {activeTab === 'forensic' && <ForensicCoreView />}
 
             {activeTab === 'diagnostics' && (
               <DiagnosticsView

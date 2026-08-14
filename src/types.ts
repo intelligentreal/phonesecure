@@ -143,4 +143,5 @@ export type ActiveTabType =
   | 'network'
   | 'vault'
   | 'ai_advisor'
+  | 'forensic'
   | 'diagnostics';

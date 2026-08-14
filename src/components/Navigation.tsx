@@ -8,7 +8,8 @@ import {
   Wifi,
   Lock,
   Bot,
-  Activity
+  Activity,
+  Binary
 } from 'lucide-react';
 import { ActiveTabType } from '../types';
 import { soundFx } from '../utils/audioSensors';
@@ -73,6 +74,13 @@ export const Navigation: React.FC<NavigationProps> = ({
       icon: Bot,
       badge: 'NEURAL',
       badgeColor: 'bg-indigo-500/20 border border-indigo-500/40 text-indigo-300'
+    },
+    {
+      id: 'forensic' as ActiveTabType,
+      label: 'Forensic DNA',
+      icon: Binary,
+      badge: 'v1.2.2-F',
+      badgeColor: 'bg-emerald-500/20 border border-emerald-500/40 text-emerald-300'
     },
     {
       id: 'diagnostics' as ActiveTabType,
