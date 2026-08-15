@@ -33,6 +33,20 @@ export interface StandardDnaFixture {
       family: 'CONTENT';
       weight: 40;
       authorizedDatasets: [];
+    },
+    {
+      id: 'IP_AS_HOST';
+      version: '1.0.0';
+      family: 'INFRASTRUCTURE';
+      weight: 30;
+      authorizedDatasets: [];
+    },
+    {
+      id: 'ENTROPY_HIGH';
+      version: '1.0.0';
+      family: 'DOMAIN';
+      weight: 25;
+      authorizedDatasets: [];
     }
   ];
 }
@@ -69,6 +83,20 @@ export const AUTHORITATIVE_DNA_FIXTURE: StandardDnaFixture = {
       version: '1.0.0',
       family: 'CONTENT',
       weight: 40,
+      authorizedDatasets: []
+    },
+    {
+      id: 'IP_AS_HOST',
+      version: '1.0.0',
+      family: 'INFRASTRUCTURE',
+      weight: 30,
+      authorizedDatasets: []
+    },
+    {
+      id: 'ENTROPY_HIGH',
+      version: '1.0.0',
+      family: 'DOMAIN',
+      weight: 25,
       authorizedDatasets: []
     }
   ]

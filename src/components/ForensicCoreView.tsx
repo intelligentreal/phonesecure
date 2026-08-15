@@ -16,11 +16,14 @@ import {
   ExternalLink,
   ChevronRight,
   Fingerprint,
-  Sliders
+  Sliders,
+  Download,
+  Share2
 } from 'lucide-react';
 import { EmpiricalTestSuite, TestSuiteReport } from '../core/test/TestSuite';
 import { AUTHORITATIVE_DNA_FIXTURE } from '../core/db/ForensicDatabase';
 import { ForensicPipeline, ForensicExecutionResult } from '../core/engine/ForensicPipeline';
+import { ForensicExporter } from '../core/export/ForensicExporter';
 import { soundFx } from '../utils/audioSensors';
 
 export const ForensicCoreView: React.FC = () => {
@@ -34,6 +37,7 @@ export const ForensicCoreView: React.FC = () => {
   const [testFormAction, setTestFormAction] = useState('https://stealth-credential-drop.ru/post');
   const [executionResult, setExecutionResult] = useState<ForensicExecutionResult | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [exportNotification, setExportNotification] = useState<string | null>(null);
 
   // Pre-loaded offline test fixtures
   const sampleFixtures = [
@@ -41,6 +45,11 @@ export const ForensicCoreView: React.FC = () => {
       label: 'Critical: Punycode + Risky TLD (.tk) + Ext Form Action',
       url: 'https://xn--pple-43d.tk/account/verify',
       formAction: 'https://evil-harvester.xyz/submit.php',
+    },
+    {
+      label: 'Suspicious: Raw IP as Host with Login Path',
+      url: 'http://192.168.1.1:8080/admin/login',
+      formAction: 'http://192.168.1.1:8080/auth',
     },
     {
       label: 'Suspicious: Free TLD (.ml) without External Action',
@@ -53,9 +62,9 @@ export const ForensicCoreView: React.FC = () => {
       formAction: 'https://google.com/auth',
     },
     {
-      label: 'Suspicious: Homograph Punycode on .com',
-      url: 'https://xn--microsft-97a.com/update',
-      formAction: 'https://xn--microsft-97a.com/update',
+      label: 'Suspicious: High Shannon Entropy DGA Domain',
+      url: 'https://x892jklaz9182nbczq.org/verify',
+      formAction: 'https://x892jklaz9182nbczq.org/submit',
     }
   ];
 
@@ -75,107 +84,169 @@ export const ForensicCoreView: React.FC = () => {
     }, 150);
   };
 
-  const handleSimulateScan = async (urlToScan?: string, actionToUse?: string) => {
-    const targetUrl = urlToScan || testUrl;
-    const targetAction = actionToUse || testFormAction;
+  const handleExecutePipeline = async (urlToTest = testUrl, formToTest = testFormAction) => {
     setIsExecuting(true);
-    soundFx.playClick(true);
-
-    const pipeline = new ForensicPipeline();
-    const result = await pipeline.executeScan(targetUrl, {
-      formActions: targetAction ? [targetAction] : [],
-    });
-
-    setExecutionResult(result);
-    setIsExecuting(false);
+    soundFx.playRadarBeep();
+    try {
+      const pipeline = new ForensicPipeline();
+      const telemetry = formToTest ? { formActions: [formToTest] } : {};
+      const result = await pipeline.executeScan(urlToTest, telemetry);
+      setExecutionResult(result);
+      if (result.riskScore.classification === 'MALICIOUS') {
+        soundFx.playThreatAlert();
+      } else if (result.riskScore.classification === 'SUSPICIOUS') {
+        soundFx.playRadarBeep();
+      } else {
+        soundFx.playShieldSecured();
+      }
+    } finally {
+      setIsExecuting(false);
+    }
   };
 
-  const categories = testReport
-    ? ['ALL', ...Array.from(new Set(testReport.results.map((r) => r.category)))]
-    : ['ALL'];
+  const downloadStixBundle = () => {
+    if (!executionResult) return;
+    const stix = ForensicExporter.toStixBundle(executionResult);
+    const blob = new Blob([JSON.stringify(stix, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stix-bundle-${executionResult.observationId}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotice('STIX 2.1 Threat Intel Bundle exported successfully');
+  };
 
-  const filteredResults = testReport?.results.filter((r) =>
-    filterCategory === 'ALL' ? true : r.category === filterCategory
-  );
+  const downloadJsonLdDossier = () => {
+    if (!executionResult) return;
+    const jsonLd = ForensicExporter.toJsonLdDossier(executionResult);
+    const blob = new Blob([JSON.stringify(jsonLd, null, 2)], { type: 'application/ld+json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `legal-dossier-${executionResult.observationId}.jsonld`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showNotice('JSON-LD Forensic Legal Dossier exported');
+  };
+
+  const showNotice = (msg: string) => {
+    setExportNotification(msg);
+    setTimeout(() => setExportNotification(null), 3000);
+  };
+
+  const categories = ['ALL', 'Identity & Normalization', 'Witness Detectors', 'Risk Arithmetic & Overflow Guard', 'Classification Thresholds', 'DNA Configuration & Registry', 'Forensic Provenance & Reproducibility'];
+
+  const filteredResults = testReport?.results.filter((res) => {
+    if (filterCategory === 'ALL') return true;
+    return res.category === filterCategory;
+  });
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-md relative overflow-hidden">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Top Banner with DNA Engine Specs */}
+      <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 relative overflow-hidden backdrop-blur-xl">
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative z-10">
+        
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                PHASE 1A • FROZEN
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                DETERMINISTIC CORE v1.2.2 F
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-blue-600/10 border border-blue-500/20 text-blue-400">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-white font-mono tracking-tight">
+                    FORENSIC INTELLIGENCE ENGINE
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    AUTHORITATIVE v1.2.2-F
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-1 font-mono">
+                  Schema v1.0.0 • Strict Integer Arithmetic • RFC 3986 Normalizer • Cryptographic SHA-256 Provenance
+                </p>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight flex items-center gap-2">
-              <Binary className="w-7 h-7 text-blue-400" />
-              Forensic Intelligence Engine
-            </h1>
-            <p className="text-slate-400 text-xs sm:text-sm mt-1 max-w-2xl">
-              Configuration-driven security intelligence producing reproducible, auditable risk verdicts from versioned signals with immutable computational provenance.
-            </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <motion.button
-              whileHover={{ scale: 1.02, y: -1 }}
-              whileTap={{ scale: 0.97 }}
+          <div className="flex items-center gap-2 font-mono">
+            <button
               onClick={runSuite}
               disabled={isRunningTests}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold shadow-[0_0_20px_rgba(37,99,235,0.3)] flex items-center gap-2 cursor-pointer transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50 cursor-pointer"
             >
-              <RefreshCw className={`w-4 h-4 ${isRunningTests ? 'animate-spin' : ''}`} />
-              <span>{isRunningTests ? 'Verifying 165 Vectors...' : 'Execute Test Suite (165)'}</span>
-            </motion.button>
+              <RefreshCw className={`w-3.5 h-3.5 ${isRunningTests ? 'animate-spin' : ''}`} />
+              Re-evaluate Vectors ({testReport?.total || 170})
+            </button>
           </div>
         </div>
 
-        {/* Sub-Navigation Tabs */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800/80 overflow-x-auto">
-          {[
-            { id: 'suite', label: 'Empirical Verification Suite', icon: CheckCircle2, badge: testReport ? `${testReport.passed}/${testReport.total}` : '165' },
-            { id: 'pipeline', label: 'Deterministic Pipeline Simulator', icon: Play },
-            { id: 'dna', label: 'DNA Configuration Blueprint', icon: FileCode },
-            { id: 'ledger', label: 'Forensic Evidence Ledger', icon: Database },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeSubTab === tab.id;
-            return (
-              <motion.button
-                key={tab.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => {
-                  setActiveSubTab(tab.id as any);
-                  soundFx.playClick(false);
-                }}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
-                  isActive
-                    ? 'bg-blue-600/20 text-blue-300 border border-blue-500/40 shadow-[0_0_15px_rgba(37,99,235,0.2)]'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-400' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
-                    {tab.badge}
-                  </span>
-                )}
-              </motion.button>
-            );
-          })}
+        {/* Sub Navigation */}
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800/80 font-mono text-xs overflow-x-auto">
+          <button
+            onClick={() => setActiveSubTab('suite')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+              activeSubTab === 'suite'
+                ? 'bg-blue-600 text-white font-semibold shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            Empirical Test Suite ({testReport?.passed || 0}/{testReport?.total || 0})
+          </button>
+          <button
+            onClick={() => {
+              setActiveSubTab('pipeline');
+              if (!executionResult) handleExecutePipeline();
+            }}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+              activeSubTab === 'pipeline'
+                ? 'bg-blue-600 text-white font-semibold shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Play className="w-3.5 h-3.5" />
+            Deterministic Pipeline Simulator
+          </button>
+          <button
+            onClick={() => setActiveSubTab('dna')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+              activeSubTab === 'dna'
+                ? 'bg-blue-600 text-white font-semibold shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <FileCode className="w-3.5 h-3.5" />
+            Authoritative DNA Blueprint
+          </button>
+          <button
+            onClick={() => setActiveSubTab('ledger')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+              activeSubTab === 'ledger'
+                ? 'bg-blue-600 text-white font-semibold shadow-md'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Database className="w-3.5 h-3.5" />
+            Persistence Ledger Architecture
+          </button>
         </div>
       </div>
 
-      {/* Main SubTab Content */}
+      {exportNotification && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono px-4 py-2.5 rounded-xl flex items-center gap-2"
+        >
+          <CheckCircle2 className="w-4 h-4" />
+          {exportNotification}
+        </motion.div>
+      )}
+
+      {/* Main SubTab Content View */}
       <AnimatePresence mode="wait">
         {activeSubTab === 'suite' && (
           <motion.div
@@ -189,12 +260,12 @@ export const ForensicCoreView: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
                 <div className="text-slate-400 text-xs uppercase font-mono">Total Assertions</div>
-                <div className="text-2xl font-bold text-white mt-1 font-mono">{testReport?.total || 165}</div>
+                <div className="text-2xl font-bold text-white mt-1 font-mono">{testReport?.total || 170}</div>
                 <div className="text-[10px] text-slate-500 mt-1">Steps 1-8 Ratified</div>
               </div>
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
                 <div className="text-emerald-400 text-xs uppercase font-mono">Passed Vectors</div>
-                <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{testReport?.passed || 165}</div>
+                <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{testReport?.passed || 170}</div>
                 <div className="text-[10px] text-emerald-500/80 mt-1">100% Deterministic Pass</div>
               </div>
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
@@ -204,8 +275,8 @@ export const ForensicCoreView: React.FC = () => {
               </div>
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4">
                 <div className="text-blue-400 text-xs uppercase font-mono">Execution Timing</div>
-                <div className="text-2xl font-bold text-blue-400 mt-1 font-mono">{testReport?.durationMs || 14} ms</div>
-                <div className="text-[10px] text-blue-500/80 mt-1">Pure In-Memory Math</div>
+                <div className="text-2xl font-bold text-blue-400 mt-1 font-mono">{testReport?.durationMs || 12} ms</div>
+                <div className="text-[10px] text-blue-500/80 mt-1">SHA-256 + Pure In-Memory Math</div>
               </div>
             </div>
 
@@ -250,24 +321,32 @@ export const ForensicCoreView: React.FC = () => {
                     className="p-3 hover:bg-slate-800/30 flex items-center justify-between transition-colors gap-4"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-slate-500 text-[11px] w-24 flex-shrink-0">{test.id}</span>
+                      <span
+                        className={`p-1 rounded-md ${
+                          test.status === 'PASS'
+                            ? 'bg-emerald-500/10 text-emerald-400'
+                            : 'bg-rose-500/10 text-rose-400'
+                        }`}
+                      >
+                        {test.status === 'PASS' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        ) : (
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                        )}
+                      </span>
                       <div className="min-w-0">
-                        <div className="text-slate-200 truncate">{test.title}</div>
-                        <div className="text-[10px] text-slate-500">{test.category}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-200">{test.id}</span>
+                          <span className="text-[10px] text-slate-500 uppercase bg-slate-800 px-1.5 py-0.2 rounded">
+                            {test.category}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 text-[11px] truncate mt-0.5">{test.title}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-[10px] text-slate-500">{test.durationMs}ms</span>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          test.status === 'PASS'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                        }`}
-                      >
-                        {test.status}
-                      </span>
+                    <div className="text-right shrink-0">
+                      <span className="text-slate-500 text-[10px]">{test.durationMs}ms</span>
                     </div>
                   </div>
                 ))}
@@ -284,54 +363,54 @@ export const ForensicCoreView: React.FC = () => {
             exit={{ opacity: 0, y: -8 }}
             className="grid grid-cols-1 lg:grid-cols-12 gap-6"
           >
-            {/* Left Column: Input Form & Sample Fixtures */}
+            {/* Left Column: Interactive Fixture & Pipeline Trigger */}
             <div className="lg:col-span-5 space-y-4">
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase font-mono tracking-wider flex items-center gap-2">
-                  <Play className="w-4 h-4 text-blue-400" />
-                  Deterministic Offline Fixture Input
+                <h3 className="text-xs font-bold text-slate-200 uppercase font-mono tracking-wider flex items-center gap-2">
+                  <Play className="w-3.5 h-3.5 text-blue-400" />
+                  Forensic Observation Input
                 </h3>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">Resource URL / Hostname</label>
+                    <label className="text-[11px] font-mono text-slate-400 block mb-1">Target URL / Input</label>
                     <input
                       type="text"
                       value={testUrl}
                       onChange={(e) => setTestUrl(e.target.value)}
-                      placeholder="e.g. https://xn--bank-43d.tk/login"
+                      placeholder="https://example.com"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono text-slate-400 mb-1">Form Action Telemetry</label>
+                    <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                      Observed Form Action Telemetry (Optional)
+                    </label>
                     <input
                       type="text"
                       value={testFormAction}
                       onChange={(e) => setTestFormAction(e.target.value)}
-                      placeholder="e.g. https://evil-collector.xyz/post"
+                      placeholder="https://exfiltration-server.ru/post"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
                     />
                   </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => handleSimulateScan()}
+                  <button
+                    onClick={() => handleExecutePipeline()}
                     disabled={isExecuting}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(37,99,235,0.25)]"
+                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-mono font-bold text-xs rounded-xl transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                   >
-                    <Binary className={`w-4 h-4 ${isExecuting ? 'animate-spin' : ''}`} />
-                    <span>{isExecuting ? 'Evaluating Forensic Chain...' : 'Run Deterministic Scan'}</span>
-                  </motion.button>
+                    <Play className={`w-3.5 h-3.5 ${isExecuting ? 'animate-spin' : ''}`} />
+                    {isExecuting ? 'Computing Integer Risk...' : 'Execute Deterministic Scan'}
+                  </button>
                 </div>
               </div>
 
-              {/* Sample Fixtures Selector */}
+              {/* Pre-packaged Forensic Test Fixtures */}
               <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-5 backdrop-blur-sm space-y-3">
-                <h4 className="text-xs font-bold text-slate-400 uppercase font-mono tracking-wider">
-                  Select Pre-Configured Test Fixture
+                <h4 className="text-xs font-bold text-slate-300 uppercase font-mono tracking-wider">
+                  Select Certified Test Fixture
                 </h4>
                 <div className="space-y-2">
                   {sampleFixtures.map((fix, idx) => (
@@ -340,12 +419,14 @@ export const ForensicCoreView: React.FC = () => {
                       onClick={() => {
                         setTestUrl(fix.url);
                         setTestFormAction(fix.formAction);
-                        handleSimulateScan(fix.url, fix.formAction);
+                        handleExecutePipeline(fix.url, fix.formAction);
                       }}
-                      className="w-full text-left p-2.5 rounded-xl bg-slate-950/60 hover:bg-slate-800/60 border border-slate-800/80 hover:border-blue-500/40 text-xs transition-all cursor-pointer group"
+                      className="w-full text-left p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-blue-500/40 transition-all font-mono text-xs cursor-pointer group"
                     >
-                      <div className="text-slate-200 font-medium group-hover:text-blue-300">{fix.label}</div>
-                      <div className="text-[10px] font-mono text-slate-500 truncate mt-0.5">{fix.url}</div>
+                      <div className="text-slate-300 font-semibold group-hover:text-blue-300 text-[11px]">
+                        {fix.label}
+                      </div>
+                      <div className="text-slate-500 text-[10px] truncate mt-0.5">{fix.url}</div>
                     </button>
                   ))}
                 </div>
@@ -446,15 +527,30 @@ export const ForensicCoreView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Provenance Footer */}
-                  <div className="pt-4 border-t border-slate-800 text-[11px] font-mono text-slate-400 space-y-1">
+                  {/* Provenance Footer & Threat Intelligence Exporters */}
+                  <div className="pt-4 border-t border-slate-800 text-[11px] font-mono text-slate-400 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span>PROVENANCE HASH:</span>
+                      <span>PROVENANCE HASH (SHA-256):</span>
                       <span className="text-emerald-400 font-bold">{executionResult.provenanceHash}</span>
                     </div>
                     <div className="flex items-center justify-between text-slate-500">
                       <span>NORMALIZED CANONICAL:</span>
                       <span className="truncate max-w-[280px]">{executionResult.identity.canonicalUrl}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <button
+                        onClick={downloadStixBundle}
+                        className="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-700"
+                      >
+                        <Download className="w-3 h-3 text-blue-400" /> Export STIX 2.1
+                      </button>
+                      <button
+                        onClick={downloadJsonLdDossier}
+                        className="flex-1 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-700"
+                      >
+                        <Share2 className="w-3 h-3 text-emerald-400" /> JSON-LD Dossier
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -535,7 +631,7 @@ export const ForensicCoreView: React.FC = () => {
                   <div className="text-slate-200 mt-2 text-[11px] space-y-1">
                     <div>• evidence_id (UUID PK)</div>
                     <div>• observation_id (FK)</div>
-                    <div>• signal_id: PUNYCODE / RISKY_TLD</div>
+                    <div>• signal_id: PUNYCODE / RISKY_TLD / IP_AS_HOST / ENTROPY</div>
                     <div>• confidence (INTEGER 0-100)</div>
                     <div>• contribution (INTEGER)</div>
                     <div>• evidence_data (JSON)</div>

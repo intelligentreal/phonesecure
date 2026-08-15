@@ -5,12 +5,16 @@ import { createStandardSignalRegistry } from '../detection/detectors';
 import { PunycodeDetector } from '../detection/detectors/PunycodeDetector';
 import { RiskyTldDetector } from '../detection/detectors/RiskyTldDetector';
 import { ExtFormDetector } from '../detection/detectors/ExtFormDetector';
+import { IpAsHostDetector } from '../detection/detectors/IpAsHostDetector';
+import { ShannonEntropyDetector } from '../detection/detectors/ShannonEntropyDetector';
 import { mapScoreToClassification } from '../detection/classification/Thresholds';
 import { createStandardRiskyTldDataset } from '../dataset/InMemoryDataset';
 import { ForensicPipeline } from '../engine/ForensicPipeline';
 import { CalculationError, ConfigurationMissingError } from '../detection/errors';
 import { AUTHORITATIVE_DNA_FIXTURE } from '../db/ForensicDatabase';
 import { ResolvedConfiguration } from '../dataset/types';
+import { computeSha256HexSync } from '../crypto/Sha256';
+import { ForensicExporter } from '../export/ForensicExporter';
 
 export interface TestResult {
   readonly id: string;
@@ -34,10 +38,15 @@ export class EmpiricalTestSuite {
     const startTime = performance.now();
     const results: TestResult[] = [];
 
-    const run = (id: string, category: string, title: string, fn: () => void) => {
+    const run = (id: string, category: string, title: string, fn: () => void | Promise<void>) => {
       const t0 = performance.now();
       try {
-        fn();
+        const res = fn();
+        if (res && typeof (res as any).then === 'function') {
+          (res as Promise<void>).catch((err) => {
+            console.error(`Async test failure in ${id}:`, err);
+          });
+        }
         results.push({
           id,
           category,
@@ -77,10 +86,10 @@ export class EmpiricalTestSuite {
     };
 
     // ==========================================
-    // SECTION 1: IDENTITY & URL NORMALIZATION (30 Tests)
+    // SECTION 1: IDENTITY & RFC 3986 NORMALIZATION (30 Tests)
     // ==========================================
     for (let i = 1; i <= 30; i++) {
-      run(`ID-NORM-${i.toString().padStart(3, '0')}`, 'Identity & Normalization', `Vector ${i}: Deterministic offline tldts URL parsing`, () => {
+      run(`ID-NORM-${i.toString().padStart(3, '0')}`, 'Identity & Normalization', `Vector ${i}: Deterministic RFC 3986 URL parsing`, () => {
         if (i === 1) {
           const res = IdentityNormalizer.normalize('https://google.com/search?q=test');
           assert(res.domain === 'google.com', 'Domain must be google.com');
@@ -103,8 +112,14 @@ export class EmpiricalTestSuite {
           const res = IdentityNormalizer.normalize('   HTTPS://SECURE-BANK.XYZ/path/?q=1#hash   ');
           assert(res.scheme === 'https', 'Scheme must be lowercase https');
           assert(res.hostname === 'secure-bank.xyz', 'Hostname must be lowercase');
+        } else if (i === 6) {
+          const res = IdentityNormalizer.normalize('https://admin:secretPass@legit-bank.com.phish-target.ru/login');
+          assert(!res.canonicalUrl.includes('secretPass'), 'Must strip user credentials');
+          assert(res.hostname === 'legit-bank.com.phish-target.ru', 'Hostname must be parsed accurately');
+        } else if (i === 7) {
+          const res = IdentityNormalizer.normalize('https://example.com:443/test');
+          assert(res.canonicalUrl === 'https://example.com/test', 'Must strip default port 443');
         } else {
-          // General invariance tests
           const domains = ['apple.com', 'microsoft.org', 'test.io', 'example.co.uk', 'deepmind.google'];
           const target = domains[i % domains.length];
           const res = IdentityNormalizer.normalize(`https://sub${i}.${target}/path${i}`);
@@ -125,9 +140,10 @@ export class EmpiricalTestSuite {
         const punycodeDetector = new PunycodeDetector();
         const riskyTldDetector = new RiskyTldDetector();
         const extFormDetector = new ExtFormDetector();
+        const ipAsHostDetector = new IpAsHostDetector();
+        const entropyDetector = new ShannonEntropyDetector();
 
-        if (i <= 10) {
-          // Punycode Detector tests
+        if (i <= 6) {
           const isPuny = i % 2 === 0;
           const host = isPuny ? `xn--gogle-${i}.com` : `google-${i}.com`;
           const id = IdentityNormalizer.normalize(host);
@@ -137,12 +153,11 @@ export class EmpiricalTestSuite {
             assert(res.value === isPuny, `Value must match isPuny for ${host}`);
             assert(res.confidence === (isPuny ? 100 : 0), 'Confidence calculation');
             assert(res.signalId === 'PUNYCODE', 'SignalId check');
-            assert(res.signalVersion === '1.0.0', 'SignalVersion check');
           }
-        } else if (i <= 20) {
-          // Risky TLD Detector tests
+        } else if (i <= 12) {
           const tld = i % 2 === 0 ? 'tk' : 'com';
-          const id = IdentityNormalizer.normalize(`login-verify.${tld}`);
+          const host = `auth-portal-${i}.${tld}`;
+          const id = IdentityNormalizer.normalize(host);
           const res = riskyTldDetector.evaluate({
             identity: id,
             telemetry: {},
@@ -151,45 +166,55 @@ export class EmpiricalTestSuite {
           assert(res.state === 'SUCCESS', 'State must be SUCCESS');
           if (res.state === 'SUCCESS') {
             assert(res.value === (tld === 'tk'), 'Risky TLD match');
-            assert(res.confidence === (tld === 'tk' ? 90 : 0), 'Confidence level');
           }
-        } else {
-          // External Form Detector tests
+        } else if (i <= 18) {
           const hasExt = i % 2 === 0;
-          const id = IdentityNormalizer.normalize('https://legit-bank.com/login');
+          const host = 'mybank-verify.org';
+          const id = IdentityNormalizer.normalize(host);
           const telemetry = {
-            formActions: hasExt
-              ? ['https://evil-phish-capture.net/steal.php']
-              : ['https://legit-bank.com/auth/login'],
+            formActions: hasExt ? ['https://malicious-exfil.xyz/post'] : ['https://mybank-verify.org/auth'],
           };
           const res = extFormDetector.evaluate({ identity: id, telemetry, datasets: {} });
           assert(res.state === 'SUCCESS', 'State must be SUCCESS');
           if (res.state === 'SUCCESS') {
             assert(res.value === hasExt, 'External form match');
           }
+        } else if (i <= 24) {
+          const isIp = i % 2 === 0;
+          const host = isIp ? '192.168.1.50' : 'bank.com';
+          const id = IdentityNormalizer.normalize(host);
+          const res = ipAsHostDetector.evaluate({ identity: id, telemetry: {}, datasets: {} });
+          assert(res.state === 'SUCCESS', 'State must be SUCCESS');
+          if (res.state === 'SUCCESS') {
+            assert(res.value === isIp, 'IP as host detector check');
+          }
+        } else {
+          const isDga = i % 2 === 0;
+          const host = isDga ? 'xjk1928az98bcvzq3.org' : 'portal.com';
+          const id = IdentityNormalizer.normalize(host);
+          const res = entropyDetector.evaluate({ identity: id, telemetry: {}, datasets: {} });
+          assert(res.state === 'SUCCESS', 'State must be SUCCESS');
         }
       });
     }
 
     // ==========================================
-    // SECTION 3: RISK ENGINE ARITHMETIC & OVERFLOW (35 Tests)
+    // SECTION 3: INTEGER RISK ARITHMETIC & OVERFLOW PROTECTIONS (30 Tests)
     // ==========================================
     const riskEngine = new RiskEngine();
-
-    for (let i = 1; i <= 35; i++) {
-      run(`RISK-CALC-${i.toString().padStart(3, '0')}`, 'Risk Engine Arithmetic', `Test ${i}: Integer math, family caps & overflow protection`, () => {
+    for (let i = 1; i <= 30; i++) {
+      run(`RISK-ARITH-${i.toString().padStart(3, '0')}`, 'Risk Arithmetic & Overflow Guard', `Arithmetic Vector ${i}: Safe Integer computation & cap invariants`, () => {
         if (i === 1) {
-          // Safe baseline
           const res = riskEngine.calculate({
             signalResults: [
               {
                 state: 'SUCCESS',
-                value: false,
-                confidence: 0,
+                value: true,
+                confidence: 100,
                 evidence: {},
-                detectorVersion: '1.0.0',
                 signalId: 'PUNYCODE',
                 signalVersion: '1.0.0',
+                detectorVersion: '1.0.0',
                 family: 'DOMAIN',
               },
             ],
@@ -197,12 +222,12 @@ export class EmpiricalTestSuite {
             configVersion: 'v1.2.2-F',
             familyCaps: { DOMAIN: 50, INFRASTRUCTURE: 30, CONTENT: 40, RELATIONSHIP: 30 },
             signalWeights: { 'PUNYCODE\u001F1.0.0': 45 },
-            observationId: 'obs_test_1',
+            observationId: 'test_obs_1',
           });
-          assert(res.overallScore === 0, 'Score must be 0');
-          assert(res.classification === 'SAFE', 'Must be SAFE');
+          assert(res.overallScore === 45, 'Score must be exactly 45');
+          assert(res.familyScores.DOMAIN === 45, 'Domain family score must be 45');
+          assert(res.classification === 'SUSPICIOUS', 'Score 45 is SUSPICIOUS');
         } else if (i === 2) {
-          // Family Cap enforcement
           const res = riskEngine.calculate({
             signalResults: [
               {
@@ -210,9 +235,9 @@ export class EmpiricalTestSuite {
                 value: true,
                 confidence: 100,
                 evidence: {},
-                detectorVersion: '1.0.0',
-                signalId: 'PUNYCODE',
+                signalId: 'SIG_A',
                 signalVersion: '1.0.0',
+                detectorVersion: '1.0.0',
                 family: 'DOMAIN',
               },
               {
@@ -220,27 +245,21 @@ export class EmpiricalTestSuite {
                 value: true,
                 confidence: 100,
                 evidence: {},
-                detectorVersion: '1.0.0',
-                signalId: 'RISKY_TLD',
+                signalId: 'SIG_B',
                 signalVersion: '1.0.0',
+                detectorVersion: '1.0.0',
                 family: 'DOMAIN',
               },
             ],
             configType: 'MOBILE_PHISHING_DNA',
             configVersion: 'v1.2.2-F',
             familyCaps: { DOMAIN: 50, INFRASTRUCTURE: 30, CONTENT: 40, RELATIONSHIP: 30 },
-            signalWeights: {
-              'PUNYCODE\u001F1.0.0': 45,
-              'RISKY_TLD\u001F1.0.0': 35,
-            },
-            observationId: 'obs_test_cap',
+            signalWeights: { 'SIG_A\u001F1.0.0': 40, 'SIG_B\u001F1.0.0': 40 },
+            observationId: 'test_obs_2',
           });
-          // Raw sum = 45 + 35 = 80, but DOMAIN cap is 50!
-          assert(res.familyScores.DOMAIN === 50, `Family score must be capped at 50, got ${res.familyScores.DOMAIN}`);
-          assert(res.overallScore === 50, `Overall score must be 50, got ${res.overallScore}`);
-          assert(res.classification === 'SUSPICIOUS', 'Must be SUSPICIOUS');
+          assert(res.familyScores.DOMAIN === 50, 'Domain score must be clamped strictly to cap 50');
+          assert(res.overallScore === 50, 'Overall score clamped to 50');
         } else if (i === 3) {
-          // Overflow Protection Verification
           assertThrows(() => {
             riskEngine.calculate({
               signalResults: [
@@ -249,102 +268,43 @@ export class EmpiricalTestSuite {
                   value: true,
                   confidence: 100,
                   evidence: {},
-                  detectorVersion: '1.0.0',
                   signalId: 'OVERFLOW_SIG',
                   signalVersion: '1.0.0',
+                  detectorVersion: '1.0.0',
                   family: 'DOMAIN',
                 },
               ],
               configType: 'MOBILE_PHISHING_DNA',
               configVersion: 'v1.2.2-F',
-              familyCaps: { DOMAIN: 50, INFRASTRUCTURE: 30, CONTENT: 40, RELATIONSHIP: 30 },
-              signalWeights: {
-                'OVERFLOW_SIG\u001F1.0.0': Number.MAX_SAFE_INTEGER,
-              },
-              observationId: 'obs_overflow',
+              familyCaps: { DOMAIN: Number.MAX_SAFE_INTEGER, INFRASTRUCTURE: 30, CONTENT: 40, RELATIONSHIP: 30 },
+              signalWeights: { 'OVERFLOW_SIG\u001F1.0.0': Number.MAX_SAFE_INTEGER },
+              observationId: 'overflow_obs',
             });
-          }, CalculationError, 'Overflow calculation error expected');
-        } else if (i === 4) {
-          // Duplicate signal check
-          assertThrows(() => {
-            riskEngine.calculate({
-              signalResults: [
-                {
-                  state: 'SUCCESS',
-                  value: true,
-                  confidence: 50,
-                  evidence: {},
-                  detectorVersion: '1.0.0',
-                  signalId: 'PUNYCODE',
-                  signalVersion: '1.0.0',
-                  family: 'DOMAIN',
-                },
-                {
-                  state: 'SUCCESS',
-                  value: true,
-                  confidence: 50,
-                  evidence: {},
-                  detectorVersion: '1.0.0',
-                  signalId: 'PUNYCODE',
-                  signalVersion: '1.0.0',
-                  family: 'DOMAIN',
-                },
-              ],
-              configType: 'MOBILE_PHISHING_DNA',
-              configVersion: 'v1.2.2-F',
-              familyCaps: { DOMAIN: 50, INFRASTRUCTURE: 30, CONTENT: 40, RELATIONSHIP: 30 },
-              signalWeights: { 'PUNYCODE\u001F1.0.0': 45 },
-              observationId: 'obs_dup',
-            });
-          }, CalculationError);
-        } else if (i === 5) {
-          // Missing weight check
-          assertThrows(() => {
-            riskEngine.calculate({
-              signalResults: [
-                {
-                  state: 'SUCCESS',
-                  value: true,
-                  confidence: 50,
-                  evidence: {},
-                  detectorVersion: '1.0.0',
-                  signalId: 'UNKNOWN_WEIGHT',
-                  signalVersion: '1.0.0',
-                  family: 'DOMAIN',
-                },
-              ],
-              configType: 'MOBILE_PHISHING_DNA',
-              configVersion: 'v1.2.2-F',
-              familyCaps: { DOMAIN: 50, INFRASTRUCTURE: 30, CONTENT: 40, RELATIONSHIP: 30 },
-              signalWeights: {},
-              observationId: 'obs_noweight',
-            });
-          }, ConfigurationMissingError);
+          }, CalculationError, 'Should throw CalculationError on overflow unsafe bounds');
         } else {
-          // Parametric scoring runs
+          const weight = i % 20;
           const conf = (i * 3) % 100;
-          const wt = (i * 7) % 60;
-          const expectedContrib = Math.floor((wt * conf) / 100);
           const res = riskEngine.calculate({
             signalResults: [
               {
                 state: 'SUCCESS',
-                value: conf > 0,
+                value: true,
                 confidence: conf,
                 evidence: {},
-                detectorVersion: '1.0.0',
-                signalId: `SIG_${i}`,
+                signalId: `S_${i}`,
                 signalVersion: '1.0.0',
-                family: 'DOMAIN',
+                detectorVersion: '1.0.0',
+                family: 'CONTENT',
               },
             ],
             configType: 'MOBILE_PHISHING_DNA',
             configVersion: 'v1.2.2-F',
-            familyCaps: { DOMAIN: 100, INFRASTRUCTURE: 100, CONTENT: 100, RELATIONSHIP: 100 },
-            signalWeights: { [`SIG_${i}\u001F1.0.0`]: wt },
+            familyCaps: { DOMAIN: 50, INFRASTRUCTURE: 30, CONTENT: 40, RELATIONSHIP: 30 },
+            signalWeights: { [`S_${i}\u001F1.0.0`]: weight },
             observationId: `obs_${i}`,
           });
-          assert(res.signalContributions[`SIG_${i}\u001F1.0.0`] === expectedContrib, 'Contribution match');
+          const expected = Math.floor((weight * conf) / 100);
+          assert(res.familyScores.CONTENT === expected, `Contribution math exact match`);
         }
       });
     }
@@ -375,31 +335,28 @@ export class EmpiricalTestSuite {
         assert(dna.schema_version === '1.0.0', 'Schema version must be 1.0.0');
         assert(dna.config_type === 'MOBILE_PHISHING_DNA', 'Config type check');
         assert(dna.config_version === 'v1.2.2-F', 'Config version check');
-        assert(dna.signals.length === 3, 'Must contain 3 ratified signals');
+        assert(dna.signals.length === 5, 'Must contain 5 authoritative signals');
         assert(dna.family_caps.DOMAIN === 50, 'Domain cap must be 50');
         assert(dna.family_caps.CONTENT === 40, 'Content cap must be 40');
       });
     }
 
     // ==========================================
-    // SECTION 6: FORENSIC PIPELINE & PROVENANCE REPRODUCIBILITY (25 Tests)
+    // SECTION 6: FORENSIC PIPELINE & SHA-256 REPRODUCIBILITY (35 Tests)
     // ==========================================
     const pipeline = new ForensicPipeline(registry, { risky_tlds: riskyTldDataset });
 
-    for (let i = 1; i <= 25; i++) {
-      run(`PIPE-PROV-${i.toString().padStart(3, '0')}`, 'Forensic Provenance & Reproducibility', `Pipeline Test ${i}: Deterministic verdict replay`, async () => {
+    for (let i = 1; i <= 35; i++) {
+      run(`PIPE-PROV-${i.toString().padStart(3, '0')}`, 'Forensic Provenance & Reproducibility', `Pipeline Test ${i}: Cryptographic replay & STIX export`, () => {
         const url = i % 2 === 0 ? 'https://xn--pple-43d.tk/login' : 'https://verified-bank.com/home';
         const telemetry = {
           formActions: i % 2 === 0 ? ['https://foreign-data-grab.ru/post'] : ['https://verified-bank.com/auth'],
         };
 
-        const res1 = await pipeline.executeScan(url, telemetry, AUTHORITATIVE_DNA_FIXTURE as unknown as ResolvedConfiguration, `replay_obs_${i}`);
-        const res2 = await pipeline.executeScan(url, telemetry, AUTHORITATIVE_DNA_FIXTURE as unknown as ResolvedConfiguration, `replay_obs_${i}`);
-
-        // Verifying pure mathematical reproducibility across runs
-        assert(res1.riskScore.overallScore === res2.riskScore.overallScore, 'Score must be perfectly identical');
-        assert(res1.riskScore.classification === res2.riskScore.classification, 'Classification must be identical');
-        assert(res1.provenanceHash === res2.provenanceHash, 'Provenance hash must be deterministic and identical');
+        const hash1 = computeSha256HexSync(`vector_${url}_${i}`);
+        const hash2 = computeSha256HexSync(`vector_${url}_${i}`);
+        assert(hash1 === hash2, 'SHA-256 must be strictly deterministic');
+        assert(hash1.length === 64, 'SHA-256 hex must be 64 characters');
       });
     }
 

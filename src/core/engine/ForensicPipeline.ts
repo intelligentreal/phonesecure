@@ -6,6 +6,7 @@ import { ResolvedConfiguration } from '../dataset/types';
 import { SignalInput, SignalResult, RiskScoreResult } from '../detection/types';
 import { InMemoryDataset, createStandardRiskyTldDataset } from '../dataset/InMemoryDataset';
 import { AUTHORITATIVE_DNA_FIXTURE } from '../db/ForensicDatabase';
+import { computeSha256Hex } from '../crypto/Sha256';
 
 export interface ForensicExecutionResult {
   readonly observationId: string;
@@ -83,7 +84,7 @@ export class ForensicPipeline {
 
     const executionTimeMs = Math.round((performance.now() - startTime) * 100) / 100;
 
-    // Deterministic provenance hash computation
+    // Cryptographic standard SHA-256 provenance hash computation
     const provenanceSeed = JSON.stringify({
       observationId,
       identityCanonical: identity.canonicalUrl,
@@ -94,14 +95,8 @@ export class ForensicPipeline {
       classification: riskScore.classification,
     });
 
-    // Simple deterministic hash
-    let hash = 0;
-    for (let i = 0; i < provenanceSeed.length; i++) {
-      const char = provenanceSeed.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash |= 0;
-    }
-    const provenanceHash = `sha256:prov_${Math.abs(hash).toString(16).padStart(8, '0')}`;
+    const shaHex = await computeSha256Hex(provenanceSeed);
+    const provenanceHash = `sha256:prov_${shaHex.slice(0, 16)}`;
 
     return {
       observationId,
