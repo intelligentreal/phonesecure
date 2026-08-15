@@ -42,19 +42,6 @@ import {
 import { soundFx } from './utils/audioSensors';
 
 export default function App() {
-  // Theme State
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('phonesecure_theme') as 'dark' | 'light') || 'dark';
-  });
-
-  const toggleTheme = () => {
-    setTheme((prev) => {
-      const next = prev === 'dark' ? 'light' : 'dark';
-      localStorage.setItem('phonesecure_theme', next);
-      return next;
-    });
-  };
-
   // Navigation
   const [activeTab, setActiveTab] = useState<ActiveTabType>('dashboard');
 
@@ -284,7 +271,7 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${theme === 'light' ? 'theme-light bg-[#F0F3F7] text-[#141B24]' : 'bg-[#0B0F15] text-[#F1F5F9]'} flex flex-col ${theme === 'light' ? 'bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(74,93,115,0.06),transparent)]' : 'bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(59,130,246,0.08),transparent)]'} selection:bg-[#4A5D73] selection:text-white`}>
+    <div className="min-h-screen bg-[#06090F] text-[#F1F5F9] flex flex-col bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(59,130,246,0.12),transparent_70%)] selection:bg-blue-600 selection:text-white">
       {/* Top Application Header */}
       <Header
         healthScore={healthScore}
@@ -293,8 +280,6 @@ export default function App() {
         onToggleMute={() => setIsMuted(soundFx.toggleMute())}
         onOpenSos={() => setIsSosOpen(true)}
         vpnConnected={networkConfig.vpnConnected}
-        theme={theme}
-        onToggleTheme={toggleTheme}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
@@ -451,8 +436,6 @@ export default function App() {
         onToggleVpn={handleToggleVpn}
         onOpenSos={() => setIsSosOpen(true)}
         vpnConnected={networkConfig.vpnConnected}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
 
       {/* Emergency SOS Modal */}
