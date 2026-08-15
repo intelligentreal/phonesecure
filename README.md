@@ -44,9 +44,16 @@ Designed with a high-performance **Express + React 19 + TypeScript** architectur
 - **Neural Threat Dissection**: Analyzes SMS messages, emails, phishing links, and deceptive invoices for social engineering tactics.
 - **Confidence Scoring & Remediation**: Delivers step-by-step containment instructions.
 
-### 7. 📊 Diagnostics & System Health
-- **Resource Profiling**: Real-time CPU, RAM, Battery thermals, and Storage telemetry.
-- **Memory Purge**: Background process garbage collector and junk cache cleaner.
+### 7. 📊 Diagnostics, Hardware Integrity & System Health
+- **Hardware Sensor Integrity Watchdog**: Periodic low-level polling of Camera, Microphone, GPS GNSS (L1/L5), and Titan M2 / FIDO2 Biometric Enclave.
+- **Web API Real-Time Verification**: Live browser probing via `navigator.mediaDevices`, `navigator.permissions`, `navigator.geolocation`, and `PublicKeyCredential`.
+- **Hardware Killswitches & Intrusion Isolation**: One-tap physical bus disconnection and DMA buffer emptying for rogue apps.
+- **Resource Profiling & Boot Attestation**: Real-time CPU, RAM, Battery thermals, SELinux enforcement, Knox warranty bit, and storage telemetry.
+- **Memory Purge & Service Optimization**: Background process garbage collector and junk cache cleaner.
+
+### 8. 🎨 UI Experience & Intelligent Micro-Animations
+- **Light & Dark Theme Engine**: Seamless dual-theme support with persistent user preference and ambient glow adaptations.
+- **Micro-Animations & Visual Physics**: Biometric scanning laser waves, radar sweep sweeps, spring transitions, and interactive tactical audio feedback via the Web Audio API.
 
 ---
 

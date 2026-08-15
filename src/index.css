@@ -1,35 +1,100 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    --bg-main: #06090F;
+    --bg-card: rgba(13, 18, 30, 0.82);
+    --border-card: rgba(36, 48, 71, 0.65);
+    --text-main: #F1F5F9;
+    --text-muted: #8493A8;
+    --shadow-card: 0 10px 32px -4px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+
+    /* Cyber Security Neon Accents */
+    --accent-blue: #3B82F6;
+    --accent-cyan: #06B6D4;
+    --accent-emerald: #10B981;
+    --accent-indigo: #6366F1;
+    --accent-rose: #F43F5E;
+    --accent-amber: #F59E0B;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #050811;
-    color: #f1f5f9;
+    background-color: #06090F;
+    color: #F1F5F9;
     overflow-x: hidden;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Space Grotesk', 'Syne', sans-serif;
+    letter-spacing: -0.03em;
   }
 
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.02em;
+  }
+
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
   }
 }
 
-/* Custom scrollbar for sleek cyber UI */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #050811;
+  background: rgba(6, 9, 15, 0.5);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #1E293B;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #334155;
 }
 
-/* Radar pulse animation */
+/* Cyber Card Styling */
+.cyber-card {
+  background: rgba(13, 18, 30, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(38, 52, 78, 0.65);
+  border-radius: 1.125rem;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.cyber-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+  box-shadow: 0 14px 40px -6px rgba(0, 0, 0, 0.65), 0 0 20px -3px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.2) inset;
+}
+
+/* Glowing Neon Elements */
+.glow-blue {
+  box-shadow: 0 0 25px -4px rgba(59, 130, 246, 0.35);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.35);
+}
+
+.glow-rose {
+  box-shadow: 0 0 25px -4px rgba(244, 63, 94, 0.35);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 25px -4px rgba(6, 182, 212, 0.35);
+}
+
+/* Radar & Sensor pulse animations */
 @keyframes radar-sweep {
   0% {
     transform: rotate(0deg);
@@ -40,97 +105,43 @@
 }
 
 .animate-radar {
-  animation: radar-sweep 3s linear infinite;
+  animation: radar-sweep 2.8s linear infinite;
 }
 
-/* Cyber Matrix & Grid Patterns from Immersive UI */
-.bg-cyber-grid {
-  background-image: linear-gradient(rgba(37, 99, 235, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37, 99, 235, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-/* Glassmorphic Immersive Cyber Cards */
-.cyber-card {
-  background: rgba(7, 11, 24, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(30, 41, 59, 0.6);
-  border-radius: 1.5rem;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.cyber-card:hover {
-  border-color: rgba(59, 130, 246, 0.4);
-  box-shadow: 0 10px 30px -10px rgba(37, 99, 235, 0.15);
-}
-
-.cyber-card-glow-cyan {
-  border-color: rgba(6, 182, 212, 0.4);
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.2);
-}
-
-.cyber-card-glow-blue {
-  border-color: rgba(37, 99, 235, 0.4);
-  box-shadow: 0 0 25px -5px rgba(37, 99, 235, 0.25);
-}
-
-.cyber-card-glow-emerald {
-  border-color: rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.2);
-}
-
-.cyber-card-glow-rose {
-  border-color: rgba(244, 63, 94, 0.4);
-  box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.2);
-}
-
-/* Micro-animations and Shimmer */
-@keyframes cyber-shimmer {
+@keyframes biometric-beam {
   0% {
-    transform: translateX(-100%);
+    top: 0%;
+    opacity: 0.2;
+  }
+  50% {
+    top: 95%;
+    opacity: 0.9;
   }
   100% {
-    transform: translateX(200%);
+    top: 0%;
+    opacity: 0.2;
   }
 }
 
-.animate-shimmer {
-  position: relative;
-  overflow: hidden;
+.animate-biometric-beam {
+  animation: biometric-beam 2.2s ease-in-out infinite;
 }
 
-.animate-shimmer::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.08),
-    transparent
-  );
-  animation: cyber-shimmer 2.5s infinite;
-}
-
-@keyframes pulse-subtle {
+@keyframes pulse-glow {
   0%, 100% {
-    opacity: 1;
+    opacity: 0.4;
     transform: scale(1);
   }
   50% {
-    opacity: 0.85;
-    transform: scale(0.98);
+    opacity: 0.8;
+    transform: scale(1.05);
   }
 }
 
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s ease-in-out infinite;
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
 }
 
-/* Smooth Interactive Click Transitions */
 button, [role="button"], a {
   transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -138,5 +149,3 @@ button, [role="button"], a {
 button:active, [role="button"]:active {
   transform: scale(0.975);
 }
-
-

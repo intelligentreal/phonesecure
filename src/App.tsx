@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { DashboardView } from './components/DashboardView';
 import { ThreatScannerView } from './components/ThreatScannerView';
+import { ZeroClickHardeningView } from './components/ZeroClickHardeningView';
 import { PrivacyShieldView } from './components/PrivacyShieldView';
 import { AntiTheftView } from './components/AntiTheftView';
 import { NetworkDefenseView } from './components/NetworkDefenseView';
@@ -13,6 +14,7 @@ import { ForensicCoreView } from './components/ForensicCoreView';
 import { DiagnosticsView } from './components/DiagnosticsView';
 import { EmergencySosModal } from './components/EmergencySosModal';
 import { RemoteLockOverlay } from './components/RemoteLockOverlay';
+import { CommandPalette } from './components/CommandPalette';
 
 import {
   INITIAL_THREATS,
@@ -40,6 +42,19 @@ import {
 import { soundFx } from './utils/audioSensors';
 
 export default function App() {
+  // Theme State
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('phonesecure_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('phonesecure_theme', next);
+      return next;
+    });
+  };
+
   // Navigation
   const [activeTab, setActiveTab] = useState<ActiveTabType>('dashboard');
 
@@ -63,6 +78,7 @@ export default function App() {
 
   // UI Modals & Actions
   const [isSosOpen, setIsSosOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isCleaningCache, setIsCleaningCache] = useState(false);
@@ -268,7 +284,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050811] text-slate-100 flex flex-col bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(37,99,235,0.15),transparent)] selection:bg-blue-600 selection:text-white">
+    <div className={`min-h-screen transition-colors duration-300 ${theme === 'light' ? 'theme-light bg-[#F0F3F7] text-[#141B24]' : 'bg-[#0B0F15] text-[#F1F5F9]'} flex flex-col ${theme === 'light' ? 'bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(74,93,115,0.06),transparent)]' : 'bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(59,130,246,0.08),transparent)]'} selection:bg-[#4A5D73] selection:text-white`}>
       {/* Top Application Header */}
       <Header
         healthScore={healthScore}
@@ -277,6 +293,9 @@ export default function App() {
         onToggleMute={() => setIsMuted(soundFx.toggleMute())}
         onOpenSos={() => setIsSosOpen(true)}
         vpnConnected={networkConfig.vpnConnected}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
 
       {/* Navigation Sub-Header */}
@@ -338,6 +357,7 @@ export default function App() {
                 eventLogs={eventLogs}
                 onCleanCache={handleCleanCache}
                 isCleaningCache={isCleaningCache}
+                onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
               />
             )}
 
@@ -355,6 +375,8 @@ export default function App() {
                 }}
               />
             )}
+
+            {activeTab === 'zero_click' && <ZeroClickHardeningView />}
 
             {activeTab === 'privacy' && (
               <PrivacyShieldView
@@ -409,11 +431,29 @@ export default function App() {
                 hardware={hardware}
                 onOptimizeRam={handleOptimizeRam}
                 isOptimizing={isOptimizingRam}
+                onLogSecurityEvent={(log) => setEventLogs((prev) => [log, ...prev.slice(0, 19)])}
               />
             )}
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Command & Quick Jump Palette (Cmd+K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={setActiveTab}
+        onStartScan={() => {
+          setIsScanning(true);
+          soundFx.playRadarBeep();
+        }}
+        onCleanCache={handleCleanCache}
+        onToggleVpn={handleToggleVpn}
+        onOpenSos={() => setIsSosOpen(true)}
+        vpnConnected={networkConfig.vpnConnected}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
 
       {/* Emergency SOS Modal */}
       <EmergencySosModal

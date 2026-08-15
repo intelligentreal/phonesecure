@@ -138,6 +138,7 @@ export interface SecurityEventLog {
 export type ActiveTabType =
   | 'dashboard'
   | 'scanner'
+  | 'zero_click'
   | 'privacy'
   | 'antitheft'
   | 'network'

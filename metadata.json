@@ -1,6 +1,6 @@
 {
   "name": "PhoneSecure Mobile Guardian",
   "description": "Comprehensive mobile security suite with real-time threat protection, anti-theft locator, privacy shield, network auditor, encrypted vault, and AI cyber scam defense.",
-  "requestFramePermissions": ["camera", "geolocation"],
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

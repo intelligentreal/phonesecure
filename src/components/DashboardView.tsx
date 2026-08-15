@@ -10,15 +10,18 @@ import {
   Zap,
   Activity,
   AlertTriangle,
-  CheckCircle2,
-  Cpu,
   RefreshCw,
   Sparkles,
   ArrowRight,
-  Shield
+  Shield,
+  Crosshair,
+  Bot,
+  Binary,
+  Search
 } from 'lucide-react';
 import { ThreatItem, SecurityEventLog, ActiveTabType } from '../types';
 import { soundFx } from '../utils/audioSensors';
+import { ToggleSwitch } from './ToggleSwitch';
 
 interface DashboardViewProps {
   healthScore: number;
@@ -40,6 +43,7 @@ interface DashboardViewProps {
   eventLogs: SecurityEventLog[];
   onCleanCache: () => void;
   isCleaningCache: boolean;
+  onOpenCommandPalette?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -61,234 +65,315 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   eventLogs,
   onCleanCache,
-  isCleaningCache
+  isCleaningCache,
+  onOpenCommandPalette
 }) => {
   const activeThreats = threats.filter((t) => t.status === 'active');
-  const isOptimal = healthScore >= 85 && activeThreats.length === 0;
+  const isOptimal = healthScore >= 80 && activeThreats.length === 0;
+
+  // 10 Services List
+  const servicesList: Array<{
+    id: ActiveTabType;
+    title: string;
+    description: string;
+    icon: React.ReactNode;
+    badge: string;
+  }> = [
+    {
+      id: 'scanner',
+      title: 'Threat Scanner & Sandbox',
+      description: 'Heuristic APK signatures, trojans, ransomware, and quarantine containment sandbox.',
+      icon: <ScanSearch className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: activeThreats.length > 0 ? `${activeThreats.length} ISSUES` : 'SECURED'
+    },
+    {
+      id: 'zero_click',
+      title: 'Zero-Click & Pegasus Hardening',
+      description: 'BLASTPASS, ForcedEntry mitigation, media sandbox parsing, and accessibility lockdown.',
+      icon: <ShieldAlert className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: 'HARDENED'
+    },
+    {
+      id: 'privacy',
+      title: 'Sensor Privacy & Killswitches',
+      description: 'Hardware killswitches for Optical Camera & MEMS Mic, clipboard protector, and permissions.',
+      icon: <EyeOff className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: micCamGuardActive ? 'GUARDED' : 'STANDBY'
+    },
+    {
+      id: 'antitheft',
+      title: 'Anti-Theft Armory & Siren',
+      description: 'Precision GPS real-time tracker, front-camera decoy intruder traps, and remote lockout wipe.',
+      icon: <Crosshair className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: antiTheftArmed ? 'ARMED' : 'STANDBY'
+    },
+    {
+      id: 'network',
+      title: 'Network Defense & WireGuard VPN',
+      description: 'Encrypted Zurich tunnel, Wi-Fi ARP spoofing sentry, SSL stripping, and DNS leak guard.',
+      icon: <Wifi className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: vpnConnected ? 'CONNECTED' : 'DISCONNECTED'
+    },
+    {
+      id: 'vault',
+      title: 'Encrypted Vault & Decoy PIN',
+      description: 'Zero-knowledge AES-GCM-256 client-side cryptographic storage with master & decoy PINs.',
+      icon: <Lock className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: 'AES-256'
+    },
+    {
+      id: 'ai_advisor',
+      title: 'AI Threat Advisor & Smishing Dissector',
+      description: 'Neural SMS phishing inspection, invoice trap analysis, and conversational cyber advisor.',
+      icon: <Bot className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: 'AI ADVISOR'
+    },
+    {
+      id: 'forensic',
+      title: 'Forensic DNA & Sandbox Analyzer',
+      description: 'Binary header disassembly, entropy calculators, cryptographic hash matching, and IOC tracking.',
+      icon: <Binary className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: 'ANALYZER'
+    },
+    {
+      id: 'diagnostics',
+      title: 'Hardware Sensor Integrity',
+      description: 'Low-level kernel bus attestation, Web API real-time verification, and SOC battery thermals.',
+      icon: <Activity className="w-4 h-4 text-slate-700 dark:text-slate-200" />,
+      badge: 'SENSORS'
+    }
+  ];
 
   return (
     <div className="space-y-6">
-      {/* Top Main Section: 2 Columns matching Immersive UI */}
+      {/* Top Main Section: 2 Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column: Main Hero Security Index + Twin Cards */}
         <div className="lg:col-span-8 flex flex-col gap-6">
           {/* Main Security Index Card */}
-          <div className="bg-slate-900/40 border border-slate-800/50 rounded-3xl overflow-hidden backdrop-blur-sm group relative p-6 sm:p-8 flex flex-col justify-between">
-            {/* Immersive Cyber Grid Background Pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(37,99,235,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(37,99,235,0.05)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-
+          <div className="cyber-card p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden">
             {/* Card Header */}
-            <div className="relative z-10 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="text-xs font-mono uppercase tracking-widest text-blue-400 font-semibold block mb-1">
-                  Continuous Telemetry
+                <span className="text-xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-0.5">
+                  SYSTEM SECURITY POSTURE
                 </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  Aegis Cyber Security Index
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                  Security Integrity Index
                 </h2>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-semibold border ${
-                  isOptimal
-                    ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
-                    : 'bg-rose-950/60 border-rose-500/40 text-rose-300'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${isOptimal ? 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]' : 'bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-ping'}`} />
-                  {isOptimal ? 'SYSTEM PROTECTED' : 'AT RISK'}
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium border ${
+                    isOptimal
+                      ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                      : 'bg-rose-50 dark:bg-rose-950/60 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      isOptimal ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'
+                    }`}
+                  />
+                  {isOptimal ? 'PROTECTION ACTIVE' : 'ISSUES DETECTED'}
                 </span>
               </div>
             </div>
 
-            {/* Glowing Center Orb */}
-            <div className="relative z-10 my-8 flex flex-col items-center justify-center">
-              <div className="relative w-60 h-60 sm:w-64 sm:h-64 flex items-center justify-center">
-                {/* Outer Ring Static */}
-                <div className="absolute inset-0 border-[6px] border-emerald-500/10 rounded-full" />
-                {/* Rotating Glowing Arc */}
-                <div
-                  className={`absolute inset-0 border-[6px] rounded-full border-t-transparent animate-[spin_4s_linear_infinite] ${
-                    isOptimal
-                      ? 'border-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.2)]'
-                      : 'border-rose-500 shadow-[0_0_40px_rgba(244,63,94,0.25)]'
-                  }`}
-                />
+            {/* Minimalist Thermostat/Halo Index (Inspired by Image 3) */}
+            <div className="my-8 flex flex-col items-center justify-center">
+              <div className="relative w-56 h-56 sm:w-60 sm:h-60 flex items-center justify-center">
+                {/* Minimal Outer Ring with soft subtle halo */}
+                <div className="absolute inset-0 border border-slate-200 dark:border-slate-700/60 rounded-full shadow-[0_4px_24px_rgba(0,0,0,0.03)]" />
+                
+                {/* Secondary Inset Circle */}
+                <div className="absolute inset-3 border border-slate-100 dark:border-slate-800 rounded-full bg-slate-50/50 dark:bg-[#141B26]/60" />
 
                 {/* Center Content */}
-                <div className="flex flex-col items-center justify-center text-center px-4">
+                <div className="relative z-10 flex flex-col items-center justify-center text-center px-4">
                   {isOptimal ? (
-                    <ShieldCheck className="w-10 h-10 text-emerald-400 mb-1 drop-shadow" />
+                    <ShieldCheck className="w-8 h-8 text-[#4A5D73] dark:text-slate-300 mb-1" />
                   ) : (
-                    <ShieldAlert className="w-10 h-10 text-rose-400 mb-1 drop-shadow animate-pulse" />
+                    <ShieldAlert className="w-8 h-8 text-rose-500 mb-1 animate-pulse" />
                   )}
-                  <span className="text-5xl sm:text-6xl font-black text-white tracking-tight">
+                  <span className="text-5xl sm:text-6xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                     {healthScore}
                   </span>
-                  <span className={`text-[11px] uppercase tracking-widest font-bold mt-1 ${isOptimal ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {isOptimal ? 'Security Index' : 'Remediation Required'}
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-1">
+                    {isOptimal ? 'Optimal Health' : 'Review Security'}
                   </span>
-                  <span className="text-[10px] text-slate-400 mt-1 font-mono">
-                    {activeThreats.length === 0 ? '6 Shield Engines Active' : `${activeThreats.length} Malicious Threats`}
+                  <span className="text-[11px] text-slate-400 font-mono mt-0.5">
+                    {activeThreats.length === 0
+                      ? 'All Engines Active'
+                      : `${activeThreats.length} Action Items`}
                   </span>
                 </div>
               </div>
 
               {/* Action Trigger Buttons */}
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-                <motion.button
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+                <button
                   onClick={onStartScan}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-colors shadow-[0_0_20px_rgba(37,99,235,0.35)] flex items-center gap-2 cursor-pointer"
+                  className="px-5 py-2 bg-[#4A5D73] hover:bg-[#38495C] text-white rounded-full text-xs font-semibold transition-colors flex items-center gap-2 shadow-sm cursor-pointer"
                 >
-                  <ScanSearch className="w-4 h-4" />
-                  <span>Initiate Deep Scan</span>
-                </motion.button>
-                <motion.button
+                  <ScanSearch className="w-3.5 h-3.5" />
+                  <span>Start System Scan</span>
+                </button>
+                <button
                   onClick={onCleanCache}
                   disabled={isCleaningCache}
-                  whileHover={isCleaningCache ? {} : { scale: 1.02, y: -1 }}
-                  whileTap={isCleaningCache ? {} : { scale: 0.97 }}
-                  className="px-4 py-2.5 bg-slate-800/70 hover:bg-slate-700/80 border border-slate-700/80 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isCleaningCache ? 'animate-spin' : ''}`} />
-                  <span>{isCleaningCache ? 'Purging Temp Files...' : 'Clean Junk & Cache'}</span>
-                </motion.button>
+                  <RefreshCw
+                    className={`w-3.5 h-3.5 text-slate-500 ${isCleaningCache ? 'animate-spin' : ''}`}
+                  />
+                  <span>{isCleaningCache ? 'Cleaning...' : 'Purge Cache'}</span>
+                </button>
+
+                {onOpenCommandPalette && (
+                  <button
+                    onClick={() => {
+                      soundFx.playClick(true);
+                      onOpenCommandPalette();
+                    }}
+                    className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-full text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <Search className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Quick Command</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Bottom 3-Column Metrics */}
-            <div className="relative z-10 border-t border-slate-800/60 pt-4 grid grid-cols-3 divide-x divide-slate-800/60 text-center">
-              <motion.div whileHover={{ scale: 1.04 }} className="px-2 cursor-default transition-transform">
-                <div className="text-xl sm:text-2xl font-bold text-white">1.4k</div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Files Protected</div>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.04 }} className="px-2 cursor-default transition-transform">
-                <div className={`text-xl sm:text-2xl font-bold ${activeThreats.length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+            {/* Bottom 3 Metrics */}
+            <div className="border-t border-slate-200 dark:border-slate-800/80 pt-4 grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-800/80 text-center">
+              <div className="px-2">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">1.4k</div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                  Files Verified
+                </div>
+              </div>
+              <div className="px-2">
+                <div
+                  className={`text-xl sm:text-2xl font-bold ${
+                    activeThreats.length > 0 ? 'text-rose-600' : 'text-slate-900 dark:text-slate-100'
+                  }`}
+                >
                   {activeThreats.length}
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Active Threats</div>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.04 }} className="px-2 cursor-default transition-transform">
-                <div className="text-xl sm:text-2xl font-bold text-blue-400">42ms</div>
-                <div className="text-[10px] uppercase tracking-wider text-slate-400 mt-0.5">Tunnel Latency</div>
-              </motion.div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                  Threats
+                </div>
+              </div>
+              <div className="px-2">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">42ms</div>
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">
+                  VPN Latency
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Twin Highlight Cards matching Design */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Twin Highlight Cards (Minimalist Clean Cards) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Identity Guard Card */}
-            <motion.div
-              whileHover={{ y: -3, scale: 1.01 }}
-              transition={{ duration: 0.2 }}
-              className="bg-gradient-to-br from-indigo-600/20 to-blue-900/20 border border-indigo-500/20 rounded-2xl p-6 relative overflow-hidden backdrop-blur-sm flex flex-col justify-between"
-            >
+            <div className="cyber-card p-5 flex flex-col justify-between space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
-                    <Lock className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300">
+                    <Lock className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/60">
-                    DARK WEB SENTRY
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    IDENTITY GUARD
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-white">Identity & Breach Guard</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Zero leaked credentials detected on monitored breach intelligence databases.
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Dark Web Breach Monitor</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Monitors compromised email databases and credential dumps in real-time.
                 </p>
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
+              <button
                 onClick={() => {
                   onNavigate('ai_advisor');
                   soundFx.playClick(false);
                 }}
-                className="mt-4 w-full py-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/30 text-indigo-200 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span>Run Identity Audit</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </motion.button>
-            </motion.div>
+                <span>Run Breach Audit</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
 
             {/* Network Shield Card */}
-            <motion.div
-              whileHover={{ y: -3, scale: 1.01 }}
-              transition={{ duration: 0.2 }}
-              className="bg-gradient-to-br from-emerald-600/20 to-teal-900/20 border border-emerald-500/20 rounded-2xl p-6 relative overflow-hidden backdrop-blur-sm flex flex-col justify-between"
-            >
+            <div className="cyber-card p-5 flex flex-col justify-between space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-300">
-                    <Wifi className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300">
+                    <Wifi className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                     {vpnConnected ? 'WIREGUARD' : 'HOTSPOT GUARD'}
                   </span>
                 </div>
-                <h3 className="text-base font-bold text-white">Network & VPN Shield</h3>
-                <p className="text-xs text-slate-300 leading-relaxed">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Encrypted Tunnel</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   {vpnConnected
-                    ? 'Encrypted AES-256 tunnel active via Zurich, CH node (Zero-Log).'
-                    : 'Real-time ARP spoofing and SSL stripping defense enabled.'}
+                    ? 'Encrypted AES-256 WireGuard tunnel active via Zurich node.'
+                    : 'Real-time ARP spoofing and public Wi-Fi packet encryption ready.'}
                 </p>
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
+              <button
                 onClick={() => {
                   onToggleVpn();
                   soundFx.playClick(!vpnConnected);
                 }}
-                className={`mt-4 w-full py-2 border rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-                  vpnConnected
-                    ? 'bg-emerald-600/30 hover:bg-emerald-600/40 border-emerald-500/40 text-emerald-200'
-                    : 'bg-slate-800/70 hover:bg-slate-700/80 border-slate-700/70 text-slate-300'
-                }`}
+                className="w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <span>{vpnConnected ? 'Disconnect VPN' : 'Connect Secure Zurich VPN'}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </motion.button>
-            </motion.div>
+                <span>{vpnConnected ? 'Disconnect VPN' : 'Connect VPN'}</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Right Column: Threat Journal + Emergency Lockdown Card */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
+        {/* Right Column: Threat Journal + Emergency Card */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
           {/* Cyber Threat Journal */}
-          <div className="bg-slate-900/40 border border-slate-800/50 rounded-3xl p-6 flex flex-col flex-1 backdrop-blur-sm justify-between">
+          <div className="cyber-card p-5 flex flex-col flex-1 justify-between">
             <div>
-              <div className="flex items-center justify-between border-b border-slate-800/70 pb-3 mb-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-blue-400" />
-                  <h3 className="text-base font-bold text-white">Threat Journal</h3>
+                  <Activity className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Activity Journal</h3>
                 </div>
-                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/60">
-                  REAL-TIME
+                <span className="text-[10px] font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                  LIVE
                 </span>
               </div>
 
               {/* Event items */}
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 {eventLogs.slice(0, 5).map((log) => (
-                  <div key={log.id} className="flex items-start gap-3 text-xs">
+                  <div key={log.id} className="flex items-start gap-2.5 text-xs">
                     <span
-                      className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                      className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
                         log.severity === 'high'
-                          ? 'bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.6)]'
+                          ? 'bg-rose-500'
                           : log.severity === 'warning'
-                          ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]'
-                          : 'bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]'
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
                       }`}
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-semibold text-slate-200 truncate">{log.title}</span>
-                        <span className="text-[10px] font-mono text-slate-500 shrink-0">{log.timestamp}</span>
+                        <span className="font-medium text-slate-800 dark:text-slate-200 truncate">{log.title}</span>
+                        <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                          {log.timestamp}
+                        </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{log.description}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">{log.description}</p>
                     </div>
                   </div>
                 ))}
@@ -300,35 +385,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onNavigate('scanner');
                 soundFx.playClick(false);
               }}
-              className="mt-6 w-full py-2.5 bg-slate-800/60 hover:bg-slate-700/70 border border-slate-700/60 text-slate-300 hover:text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+              className="mt-4 w-full py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>View Full Security Logs</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3 h-3" />
             </button>
           </div>
 
-          {/* Distress / Emergency Lockdown Card */}
+          {/* Distress / Emergency Card */}
           <div
             onClick={() => {
               onNavigate('antitheft');
               soundFx.playClick(false);
             }}
-            className="bg-rose-500/10 border border-rose-500/20 rounded-3xl p-6 group cursor-pointer hover:bg-rose-500/20 transition-all backdrop-blur-sm relative overflow-hidden"
+            className="p-5 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/50 group cursor-pointer hover:bg-rose-100/50 dark:hover:bg-rose-950/40 transition-all flex flex-col justify-between"
           >
-            <div className="flex items-start gap-4">
-              <div className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400 shrink-0 group-hover:scale-105 transition">
-                <AlertTriangle className="w-6 h-6 animate-pulse" />
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 shrink-0">
+                <AlertTriangle className="w-4 h-4" />
               </div>
               <div className="space-y-1">
-                <h4 className="text-base font-bold text-white group-hover:text-rose-300 transition">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   Emergency Lockdown
                 </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  Instantly sever all radios, engage hardware enclave lock, and sound the 105dB siren deterrent.
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Instantly arm anti-theft sensors, trigger 105dB alarm, and dispatch GPS distress beacon.
                 </p>
-                <div className="pt-2 text-xs font-bold text-rose-400 flex items-center gap-1">
-                  <span>Open Anti-Theft Armory</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition" />
+                <div className="pt-1 text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                  <span>Open Emergency Controls</span>
+                  <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition" />
                 </div>
               </div>
             </div>
@@ -336,160 +421,180 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Real-time Defense Switchboard */}
+      {/* REAL-TIME PROTECTION SWITCHBOARD WITH MINIMAL TOGGLES */}
       <div className="space-y-3 pt-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Shield className="w-4 h-4 text-blue-400" />
-            Active Protection Switchboard
-          </h3>
-          <span className="text-xs font-mono text-slate-400">Layer-7 Heuristic Core</span>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Shield className="w-4 h-4 text-[#4A5D73] dark:text-slate-400" />
+              Active Protection Controls
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Individual shield toggles using minimalist single-tone switches.
+            </p>
+          </div>
+          <span className="text-xs font-mono text-slate-500">6 Engines Active</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Module 1: File & APK Shield */}
-          <div className="p-4 rounded-2xl cyber-card flex items-start justify-between gap-3">
+          <div className="p-4 cyber-card flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div className="font-semibold text-sm text-white">File & APK Shield</div>
+                <ShieldCheck className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">File & APK Shield</div>
               </div>
-              <p className="text-xs text-slate-400">
-                Hash and heuristic analysis for sideloaded APKs and binaries.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Heuristic analysis for sideloaded APKs and binaries.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-              <input
-                type="checkbox"
-                checked={realTimeShieldActive}
-                onChange={onToggleRealTimeShield}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
-            </label>
+            <ToggleSwitch
+              checked={realTimeShieldActive}
+              onChange={onToggleRealTimeShield}
+              ariaLabel="Toggle File & APK Shield"
+            />
           </div>
 
           {/* Module 2: Web Guard */}
-          <div className="p-4 rounded-2xl cyber-card flex items-start justify-between gap-3">
+          <div className="p-4 cyber-card flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-                  <Lock className="w-4 h-4" />
-                </div>
-                <div className="font-semibold text-sm text-white">Web & Phishing Guard</div>
+                <Lock className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">Web Phishing Guard</div>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Blocks deceptive zero-day phishing and malicious URLs.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-              <input
-                type="checkbox"
-                checked={webShieldActive}
-                onChange={onToggleWebShield}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600" />
-            </label>
+            <ToggleSwitch
+              checked={webShieldActive}
+              onChange={onToggleWebShield}
+              ariaLabel="Toggle Web Phishing Guard"
+            />
           </div>
 
           {/* Module 3: Wi-Fi Sentry */}
-          <div className="p-4 rounded-2xl cyber-card flex items-start justify-between gap-3">
+          <div className="p-4 cyber-card flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
-                  <Wifi className="w-4 h-4" />
-                </div>
-                <div className="font-semibold text-sm text-white">Wi-Fi & ARP Sentry</div>
+                <Wifi className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">Wi-Fi & ARP Sentry</div>
               </div>
-              <p className="text-xs text-slate-400">
-                Detects Rogue APs, SSL stripping, and MitM sniffing.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Detects rogue APs, SSL stripping, and packet sniffing.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-              <input
-                type="checkbox"
-                checked={wifiShieldActive}
-                onChange={onToggleWifiShield}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600" />
-            </label>
+            <ToggleSwitch
+              checked={wifiShieldActive}
+              onChange={onToggleWifiShield}
+              ariaLabel="Toggle Wi-Fi & ARP Sentry"
+            />
           </div>
 
           {/* Module 4: Sensor Privacy */}
-          <div className="p-4 rounded-2xl cyber-card flex items-start justify-between gap-3">
+          <div className="p-4 cyber-card flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-                  <EyeOff className="w-4 h-4" />
-                </div>
-                <div className="font-semibold text-sm text-white">Sensor Privacy Guard</div>
+                <EyeOff className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">Sensor Privacy Guard</div>
               </div>
-              <p className="text-xs text-slate-400">
-                Prevents silent background microphone and camera eavesdropping.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Blocks background microphone and camera access.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-              <input
-                type="checkbox"
-                checked={micCamGuardActive}
-                onChange={onToggleMicCamGuard}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500" />
-            </label>
+            <ToggleSwitch
+              checked={micCamGuardActive}
+              onChange={onToggleMicCamGuard}
+              ariaLabel="Toggle Sensor Privacy Guard"
+            />
           </div>
 
           {/* Module 5: Anti-Theft */}
-          <div className="p-4 rounded-2xl cyber-card flex items-start justify-between gap-3">
+          <div className="p-4 cyber-card flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400">
-                  <Zap className="w-4 h-4" />
-                </div>
-                <div className="font-semibold text-sm text-white">Anti-Theft Beacon</div>
+                <Zap className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">Anti-Theft Beacon</div>
               </div>
-              <p className="text-xs text-slate-400">
-                Precision GPS tracking, 105dB siren, and decoy intruder traps.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                GPS tracking, siren alarm, and decoy intruder traps.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-              <input
-                type="checkbox"
-                checked={antiTheftArmed}
-                onChange={onToggleAntiTheft}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600" />
-            </label>
+            <ToggleSwitch
+              checked={antiTheftArmed}
+              onChange={onToggleAntiTheft}
+              ariaLabel="Toggle Anti-Theft Beacon"
+            />
           </div>
 
           {/* Module 6: VPN Tunnel */}
-          <div className="p-4 rounded-2xl cyber-card flex items-start justify-between gap-3">
+          <div className="p-4 cyber-card flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-                  <Activity className="w-4 h-4" />
-                </div>
-                <div className="font-semibold text-sm text-white">WireGuard VPN Tunnel</div>
+                <Activity className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <div className="font-semibold text-xs sm:text-sm text-slate-900 dark:text-slate-100">WireGuard VPN Tunnel</div>
               </div>
-              <p className="text-xs text-slate-400">
-                {vpnConnected ? 'Encrypted via Zurich Node' : 'Bypass ISP tracking & encrypt IP'}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {vpnConnected ? 'Connected via Zurich node' : 'Route all traffic via encrypted tunnel'}
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
-              <input
-                type="checkbox"
-                checked={vpnConnected}
-                onChange={onToggleVpn}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
-            </label>
+            <ToggleSwitch
+              checked={vpnConnected}
+              onChange={onToggleVpn}
+              ariaLabel="Toggle WireGuard VPN Tunnel"
+            />
           </div>
+        </div>
+      </div>
+
+      {/* ALL 10 SERVICES & DEFENSE CAPABILITIES LAUNCHER */}
+      <div className="space-y-3 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+              Security & Defense Services Directory
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Direct access to all mobile protection modules, hardware gates, and sandboxes.
+            </p>
+          </div>
+          <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 self-start sm:self-auto">
+            10 MODULES OPERATIONAL
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {servicesList.map((srv) => (
+            <div
+              key={srv.id}
+              onClick={() => {
+                soundFx.playClick(true);
+                onNavigate(srv.id);
+              }}
+              className="cyber-card p-5 cursor-pointer flex flex-col justify-between space-y-3 hover:border-slate-300 dark:hover:border-slate-600"
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                    {srv.icon}
+                  </div>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    {srv.badge}
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">{srv.title}</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+                  {srv.description}
+                </p>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-[#4A5D73] dark:text-slate-300">
+                <span>Open Module</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
