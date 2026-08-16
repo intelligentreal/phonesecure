@@ -145,7 +145,9 @@ export class EmpiricalTestSuite {
 
         if (i <= 6) {
           const isPuny = i % 2 === 0;
-          const host = isPuny ? `xn--gogle-${i}.com` : `google-${i}.com`;
+          // Use valid RFC 3492 punycode fixtures (e.g. xn--pple-43d.com -> äpple.com)
+          const punyVariants = ['xn--pple-43d.com', 'xn--80akhbyknj4f.com', 'xn--e1afmkfd.com'];
+          const host = isPuny ? punyVariants[(i / 2 - 1) % punyVariants.length] : `google-${i}.com`;
           const id = IdentityNormalizer.normalize(host);
           const res = punycodeDetector.evaluate({ identity: id, telemetry: {}, datasets: {} });
           assert(res.state === 'SUCCESS', 'Must return SUCCESS');
