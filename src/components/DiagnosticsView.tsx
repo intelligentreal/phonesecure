@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Activity,
   Cpu,
@@ -22,12 +22,15 @@ import {
   AlertTriangle,
   Lock,
   Clock,
-  Shield
+  Shield,
+  Gauge,
+  Layers
 } from 'lucide-react';
 import { DeviceHardwareHealth, SecurityEventLog, ThreatItem, NetworkSecurityConfig, ScheduledScanConfig } from '../types';
 import { soundFx } from '../utils/audioSensors';
 import { HardwareIntegrityTool } from './HardwareIntegrityTool';
 import { generateSecurityAuditPdf, exportSecurityDataAsJson } from '../utils/pdfExport';
+import { probeLiveSystemEnvironment, SystemProbeResult } from '../utils/systemProber';
 
 interface DiagnosticsViewProps {
   hardware: DeviceHardwareHealth;
@@ -81,6 +84,13 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isExportingJson, setIsExportingJson] = useState(false);
   const [exportSuccessMessage, setExportSuccessMessage] = useState<string | null>(null);
+  const [liveProbe, setLiveProbe] = useState<SystemProbeResult | null>(null);
+
+  useEffect(() => {
+    probeLiveSystemEnvironment().then((result) => {
+      setLiveProbe(result);
+    });
+  }, []);
 
   // Filtered logs
   const filteredLogs = eventLogs.filter((log) => {
@@ -261,59 +271,103 @@ export const DiagnosticsView: React.FC<DiagnosticsViewProps> = ({
             {/* Battery & Thermal */}
             <div className="p-4 rounded-xl cyber-card space-y-2 bg-[#0B101C]">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs font-mono">BATTERY THERMALS</span>
-                <Thermometer className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-mono">BATTERY STATUS</span>
+                <Battery className="w-4 h-4 text-emerald-400" />
               </div>
               <div className="text-xl font-bold text-white font-mono">
-                {hardware.batteryTemperatureC}°C
+                {liveProbe?.batteryStatus?.supported
+                  ? `${liveProbe.batteryStatus.levelPercent}% (${liveProbe.batteryStatus.charging ? 'Charging' : 'Battery'})`
+                  : `${hardware.batteryHealthPercent}% Health`}
               </div>
               <div className="text-xs text-emerald-400 font-mono">
-                Health: {hardware.batteryHealthPercent}% (Safe Range)
+                Thermals: {hardware.batteryTemperatureC}°C (Safe Operating Range)
               </div>
             </div>
 
-            {/* CPU Load */}
+            {/* CPU Cores & Concurrency */}
             <div className="p-4 rounded-xl cyber-card space-y-2 bg-[#0B101C]">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs font-mono">OCTA-CORE CPU</span>
+                <span className="text-xs font-mono">LOGICAL CPU THREADS</span>
                 <Cpu className="w-4 h-4 text-cyan-400" />
               </div>
               <div className="text-xl font-bold text-white font-mono">
-                {hardware.cpuUsagePercent}% Load
+                {liveProbe ? `${liveProbe.logicalCores} Threads Active` : `${hardware.cpuUsagePercent}% Load`}
               </div>
               <div className="text-xs text-slate-400 font-mono">
-                Snapdragon 8 Gen 3 • 8/8 Cores
+                Hardware Concurrency Probed via Web API
               </div>
             </div>
 
-            {/* RAM Usage */}
+            {/* RAM Memory Range */}
             <div className="p-4 rounded-xl cyber-card space-y-2 bg-[#0B101C]">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs font-mono">UNIFIED RAM (12 GB)</span>
+                <span className="text-xs font-mono">DEVICE RAM CAPACITY</span>
                 <Zap className="w-4 h-4 text-purple-400" />
               </div>
               <div className="text-xl font-bold text-white font-mono">
-                {hardware.ramUsagePercent}% Used
+                {liveProbe?.deviceMemoryGb ? `${liveProbe.deviceMemoryGb} GB RAM Tier` : '12 GB Unified RAM'}
               </div>
               <div className="text-xs text-cyan-400 font-mono">
-                5.5 GB Available Memory
+                {hardware.ramUsagePercent}% Utilization Buffer
               </div>
             </div>
 
-            {/* Storage Volume */}
+            {/* Storage Quota */}
             <div className="p-4 rounded-xl cyber-card space-y-2 bg-[#0B101C]">
               <div className="flex items-center justify-between text-slate-400">
-                <span className="text-xs font-mono">UFS 4.0 STORAGE</span>
+                <span className="text-xs font-mono">STORAGE ALLOCATION</span>
                 <HardDrive className="w-4 h-4 text-amber-400" />
               </div>
               <div className="text-xl font-bold text-white font-mono">
-                {hardware.storageFreeGb} GB Free
+                {liveProbe?.storageEstimate
+                  ? `${liveProbe.storageEstimate.quotaGb} GB Quota`
+                  : `${hardware.storageFreeGb} GB Free`}
               </div>
               <div className="text-xs text-slate-400 font-mono">
-                Total: {hardware.storageTotalGb} GB Partition
+                {liveProbe?.storageEstimate
+                  ? `Used: ${liveProbe.storageEstimate.usageMb} MB (${liveProbe.storageEstimate.usagePercent}%)`
+                  : `Total: ${hardware.storageTotalGb} GB Partition`}
               </div>
             </div>
           </div>
+
+          {/* Live Web Sandbox Capabilities Box */}
+          {liveProbe && (
+            <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-cyan-300">
+                  <Gauge className="w-4 h-4 text-cyan-400" />
+                  <span>Real-Time Tested Web API Capabilities & Security Boundaries</span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-400 border border-slate-800">
+                  Measured Directly in Browser Runtime
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono">
+                <div className="p-2.5 rounded-lg bg-[#070B14] border border-slate-800/80">
+                  <span className="text-slate-500 block text-[10px]">GRAPHICS ACCELERATION</span>
+                  <span className="text-slate-200 text-[11px] truncate block" title={liveProbe.webglRenderer}>
+                    {liveProbe.webglRenderer}
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-[#070B14] border border-slate-800/80">
+                  <span className="text-slate-500 block text-[10px]">PLATFORM AUTHENTICATOR</span>
+                  <span className="text-emerald-400 text-[11px] font-bold block">
+                    {liveProbe.securityEnclaveType}
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-[#070B14] border border-slate-800/80">
+                  <span className="text-slate-500 block text-[10px]">COLOR DEPTH & TOUCH</span>
+                  <span className="text-slate-200 text-[11px] block">
+                    {liveProbe.screenColorDepth}-bit • {liveProbe.touchPoints} Max Touch Points
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Security Attestation & Root/Jailbreak Check */}
           <div className="p-5 rounded-2xl cyber-card space-y-4 bg-[#0B101C]">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   EyeOff,
   Camera,
@@ -9,11 +9,14 @@ import {
   HardDrive,
   Sparkles,
   Search,
-  Lock
+  Lock,
+  Radio,
+  Activity
 } from 'lucide-react';
 import { AppSecurityProfile, PermissionType } from '../types';
 import { soundFx } from '../utils/audioSensors';
 import { ToggleSwitch } from './ToggleSwitch';
+import { mediaRig } from '../utils/mediaStreamRig';
 
 interface PrivacyShieldViewProps {
   apps: AppSecurityProfile[];
@@ -40,6 +43,40 @@ export const PrivacyShieldView: React.FC<PrivacyShieldViewProps> = ({
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'high_risk' | 'sideloaded' | 'system'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAudioProbing, setIsAudioProbing] = useState(false);
+  const [liveAudioDb, setLiveAudioDb] = useState<number>(-100);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Sync killswitch with live media rig
+  useEffect(() => {
+    mediaRig.setHardwareMute(micKillswitch);
+  }, [micKillswitch]);
+
+  // Clean up media rig on unmount
+  useEffect(() => {
+    return () => {
+      mediaRig.stop();
+    };
+  }, []);
+
+  const handleToggleLiveAudioProbe = async () => {
+    if (isAudioProbing) {
+      mediaRig.stop();
+      setIsAudioProbing(false);
+      setLiveAudioDb(-100);
+    } else {
+      if (canvasRef.current) {
+        const success = await mediaRig.startMicrophoneProbe(canvasRef.current, (db) => {
+          setLiveAudioDb(db);
+        });
+        if (success) {
+          setIsAudioProbing(true);
+          mediaRig.setHardwareMute(micKillswitch);
+          soundFx.playRadarBeep();
+        }
+      }
+    }
+  };
 
   const filteredApps = apps.filter((app) => {
     const matchesSearch =
@@ -153,6 +190,62 @@ export const PrivacyShieldView: React.FC<PrivacyShieldViewProps> = ({
               }}
               ariaLabel="Toggle Clipboard Guard"
             />
+          </div>
+        </div>
+
+        {/* Live Audio Interception & Real-Time Oscilloscope Visualizer */}
+        <div className="p-4 rounded-2xl bg-[#080E1A] border border-slate-800 space-y-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-bold text-slate-200 font-mono">Live Microphone Stream Interceptor & Oscilloscope</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
+                W3C MediaStream Layer
+              </span>
+            </div>
+
+            <button
+              onClick={handleToggleLiveAudioProbe}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                isAudioProbing
+                  ? 'bg-rose-950 hover:bg-rose-900 text-rose-300 border border-rose-800'
+                  : 'bg-cyan-950 hover:bg-cyan-900 text-cyan-300 border border-cyan-800'
+              }`}
+            >
+              <Radio className={`w-3.5 h-3.5 ${isAudioProbing ? 'animate-pulse text-rose-400' : ''}`} />
+              <span>{isAudioProbing ? 'Stop Live Audio Probe' : 'Test Live Audio Stream'}</span>
+            </button>
+          </div>
+
+          <div className="relative rounded-xl overflow-hidden bg-[#060B14] border border-slate-800/80 p-1 flex items-center justify-center">
+            <canvas
+              ref={canvasRef}
+              width={600}
+              height={70}
+              className="w-full h-16 sm:h-20 block"
+            />
+            {!isAudioProbing && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-[1px] text-xs font-mono text-slate-400">
+                Click "Test Live Audio Stream" to verify real-time hardware killswitch track severing
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <div className="flex items-center gap-2">
+              <span>Status:</span>
+              <span className={`font-bold ${
+                !isAudioProbing ? 'text-slate-500' : micKillswitch ? 'text-rose-400' : 'text-emerald-400'
+              }`}>
+                {!isAudioProbing ? 'IDLE' : micKillswitch ? 'MUTED (Track Severed / 0 dB)' : 'ACTIVE (Live Stream Audio Passing)'}
+              </span>
+            </div>
+            {isAudioProbing && (
+              <div className="flex items-center gap-1.5">
+                <span>Signal Level:</span>
+                <span className="text-cyan-300 font-bold">{liveAudioDb} dB</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

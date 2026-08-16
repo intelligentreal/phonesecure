@@ -29,6 +29,7 @@ import {
 import { ThreatItem, SecuritySeverity, ScheduledScanConfig, SecurityEventLog } from '../types';
 import { soundFx } from '../utils/audioSensors';
 import { ToggleSwitch } from './ToggleSwitch';
+import { analyzeBinaryBuffer, BinaryAnalysisResult } from '../utils/binaryInspector';
 
 interface ThreatScannerViewProps {
   threats: ThreatItem[];
@@ -91,6 +92,7 @@ export const ThreatScannerView: React.FC<ThreatScannerViewProps> = ({
   const [selectedThreatDetail, setSelectedThreatDetail] = useState<ThreatItem | null>(null);
   const [sandboxFileName, setSandboxFileName] = useState('');
   const [sandboxResult, setSandboxResult] = useState<any | null>(null);
+  const [realBinaryAnalysis, setRealBinaryAnalysis] = useState<BinaryAnalysisResult | null>(null);
   const [isSandboxAnalyzing, setIsSandboxAnalyzing] = useState(false);
   const [isSimulatingScheduled, setIsSimulatingScheduled] = useState(false);
   const [activeTabSubView, setActiveTabSubView] = useState<'realtime_scanner' | 'scheduled_settings'>('realtime_scanner');
@@ -173,9 +175,81 @@ export const ThreatScannerView: React.FC<ThreatScannerViewProps> = ({
     }, 2400);
   };
 
+  const handleRealFileInspect = async (file: File) => {
+    setSandboxFileName(file.name);
+    setIsSandboxAnalyzing(true);
+    setRealBinaryAnalysis(null);
+    soundFx.playRadarBeep();
+
+    try {
+      const result = await analyzeBinaryBuffer(file);
+      setIsSandboxAnalyzing(false);
+      setRealBinaryAnalysis(result);
+
+      if (result.isMalicious) {
+        soundFx.playThreatAlert();
+        const newThreat: ThreatItem = {
+          id: `thr-${Date.now()}`,
+          name: result.detectedThreatName,
+          type: 'Trojan',
+          severity: result.heuristicRiskScore > 80 ? 'critical' : 'high',
+          description: `Cryptographic inspection: Entropy ${result.shannonEntropy}/8.0 (${result.entropyClassification}). Header: ${result.magicHeader}.`,
+          path: `/sandbox/uploaded/${file.name}`,
+          packageName: `com.untrusted.${file.name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()}`,
+          detectedAt: 'Just now (Bytecode Binary Inspection)',
+          status: 'active',
+          indicators: result.indicators,
+          recommendedAction: result.recommendations[0] || 'Quarantine immediately.',
+          sha256: result.sha256
+        };
+        onAddCustomThreat(newThreat);
+        setSandboxResult({
+          safe: false,
+          score: result.heuristicRiskScore,
+          threatName: result.detectedThreatName,
+          details: `SHA-256: ${result.sha256.substring(0, 16)}... | Shannon Entropy: ${result.shannonEntropy}/8.0`
+        });
+
+        if (onLogSecurityEvent) {
+          onLogSecurityEvent({
+            id: `evt-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'threat_blocked',
+            title: `Binary Malicious Risk: ${file.name}`,
+            description: `Detected suspicious package signature. SHA-256: ${result.sha256.substring(0, 12)}...`,
+            severity: 'critical'
+          });
+        }
+      } else {
+        soundFx.playShieldSecured();
+        setSandboxResult({
+          safe: true,
+          score: result.heuristicRiskScore,
+          threatName: 'Clean Verified Binary',
+          details: `SHA-256: ${result.sha256.substring(0, 16)}... | Format: ${result.detectedFormat}`
+        });
+
+        if (onLogSecurityEvent) {
+          onLogSecurityEvent({
+            id: `evt-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'scan',
+            title: `Binary Verified: ${file.name}`,
+            description: `Validated binary entropy (${result.shannonEntropy}/8.0) and clean format headers.`,
+            severity: 'safe'
+          });
+        }
+      }
+    } catch (err) {
+      setIsSandboxAnalyzing(false);
+      console.error('Binary inspection error:', err);
+    }
+  };
+
   const handleSandboxSimulate = (fileName: string, isMalicious: boolean) => {
     setSandboxFileName(fileName);
     setIsSandboxAnalyzing(true);
+    setRealBinaryAnalysis(null);
     soundFx.playRadarBeep();
 
     setTimeout(() => {
@@ -817,11 +891,22 @@ export const ThreatScannerView: React.FC<ThreatScannerViewProps> = ({
                   </div>
                 </div>
 
-                {/* Drag and Drop Simulator */}
-                <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-xl p-4 text-center space-y-2 transition cursor-pointer">
-                  <Upload className="w-6 h-6 text-slate-500 mx-auto" />
-                  <div className="text-xs text-slate-300 font-medium">
-                    Upload or Drop any APK / Script to analyze
+                {/* Drag and Drop Simulator with Real File Ingestion */}
+                <div
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleRealFileInspect(file);
+                  }}
+                  className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-xl p-4 text-center space-y-2 transition cursor-pointer"
+                >
+                  <Upload className="w-6 h-6 text-cyan-400 mx-auto" />
+                  <div className="text-xs text-slate-200 font-medium">
+                    Upload or Drop any APK, DEX, SO, or PDF to inspect
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    Executes client-side SHA-256, Shannon entropy calculation, & header dissection
                   </div>
                   <input
                     type="file"
@@ -830,18 +915,15 @@ export const ThreatScannerView: React.FC<ThreatScannerViewProps> = ({
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        handleSandboxSimulate(
-                          file.name,
-                          file.name.toLowerCase().includes('mod') || file.name.toLowerCase().includes('free')
-                        );
+                        handleRealFileInspect(file);
                       }
                     }}
                   />
                   <label
                     htmlFor="sandbox-file-input"
-                    className="inline-block px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-mono cursor-pointer"
+                    className="inline-block px-3 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-700/60 text-cyan-300 text-xs font-mono cursor-pointer"
                   >
-                    Browse APK / File
+                    Select Local File for Analysis
                   </label>
                 </div>
 
@@ -849,11 +931,55 @@ export const ThreatScannerView: React.FC<ThreatScannerViewProps> = ({
                 {isSandboxAnalyzing && (
                   <div className="p-3 rounded-lg bg-slate-950 border border-cyan-500/50 flex items-center gap-3 text-xs font-mono text-cyan-300 animate-pulse">
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Decompiling bytecode & inspecting AndroidManifest.xml...</span>
+                    <span>Calculating cryptographic SHA-256 & byte entropy...</span>
                   </div>
                 )}
 
-                {sandboxResult && !isSandboxAnalyzing && (
+                {/* Real Binary Inspection Detailed Metrics */}
+                {realBinaryAnalysis && !isSandboxAnalyzing && (
+                  <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2.5 text-xs font-mono">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="font-bold text-slate-200 truncate max-w-[200px]">{realBinaryAnalysis.fileName}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        realBinaryAnalysis.isMalicious ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                      }`}>
+                        Risk Score: {realBinaryAnalysis.heuristicRiskScore}/100
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-slate-500 block">Format / Magic:</span>
+                        <span className="text-cyan-300 font-bold">{realBinaryAnalysis.detectedFormat}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Shannon Entropy:</span>
+                        <span className={`font-bold ${realBinaryAnalysis.shannonEntropy > 7.2 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                          {realBinaryAnalysis.shannonEntropy} / 8.0 ({realBinaryAnalysis.entropyClassification})
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-slate-500 block">SHA-256 Digest:</span>
+                        <span className="text-slate-300 font-mono text-[10px] break-all select-all">{realBinaryAnalysis.sha256}</span>
+                      </div>
+                    </div>
+
+                    {realBinaryAnalysis.indicators.length > 0 && (
+                      <div className="pt-1.5 border-t border-slate-900">
+                        <span className="text-[10px] uppercase tracking-wider text-slate-500 block mb-1">Detected Indicators:</span>
+                        <ul className="space-y-1">
+                          {realBinaryAnalysis.indicators.map((ind, i) => (
+                            <li key={i} className="text-[11px] text-amber-300 flex items-start gap-1.5">
+                              <span className="text-slate-600">•</span> {ind}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {sandboxResult && !realBinaryAnalysis && !isSandboxAnalyzing && (
                   <div
                     className={`p-3.5 rounded-xl border space-y-1.5 text-xs font-mono ${
                       sandboxResult.safe
