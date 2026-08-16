@@ -1,59 +1,73 @@
-# Aegis Secure Mobile Guardian (Enterprise v5.2)
+# PhoneSecure Mobile Guardian (Enterprise Edition v5.2)
 
-> **Next-Generation Zero-Trust Mobile Defense, Real-Time Heuristic Threat Detection, and Privacy Protection System.**
+> **Next-Generation Zero-Trust Mobile Defense, Heuristic Threat Scanner, Zero-Click Blastdoor Hardening, and Cryptographic Privacy Protection.**
 
 ---
 
 ## 🛡️ Executive Overview
 
-**Aegis Secure** is an advanced mobile security and device hardening platform engineered to protect modern mobile devices against zero-day malware, sophisticated spyware (such as Pegasus-class payloads), rogue Wi-Fi access points, ARP poisoning, credential leaks, and unauthorized hardware access (camera/microphone/clipboard).
+**PhoneSecure Mobile Guardian** is an enterprise-grade mobile cybersecurity suite engineered to defend mobile devices and web clients against zero-day malware, blastdoor media parser exploits, smishing/phishing scams, rogue public Wi-Fi hotspots, ARP poisoning, credential harvesting, and unauthorized hardware bus access.
 
-Designed with a high-performance **Express + React 19 + TypeScript** architecture, Aegis provides military-grade telemetry, real-time cryptographic vault protection (AES-GCM-256), AI-powered smishing analysis, and instant remote anti-theft counter-measures.
+Built on an **Express + React 19 + TypeScript** architecture, PhoneSecure unites real-time threat intelligence powered by Google Gemini AI, client-side zero-knowledge cryptography (AES-GCM-256 + PBKDF2), hardware sensor probing via standard Web APIs, deterministic phishing DNA analysis, and exportable forensic PDF audit certification.
 
 ---
 
-## ⚡ Key Capabilities & Modules
+## ⚡ Core Modules & Implemented Capabilities
 
-### 1. 🔍 Threat Scanner & Heuristic Engine
-- **Kernel-Level Heuristic Analysis**: Deep scanning of APK payloads, binaries, and filesystem modifications.
-- **Real-Time Signature Matching**: Instant detection of known spyware, trojans, ransomware, and telemetry beacons.
-- **Quarantine & Shredding Sandbox**: Isolated containment preventing background execution and data exfiltration.
+### 1. 🔍 Threat Scanner & Heuristic Sandbox
+- **SVG Radial Progress Scanner**: Real-time animated gradient ring displaying live percentage progress, active inspection stages, and monitored filesystem paths.
+- **APK & Payload Sandbox**: Decompiles uploaded files and packages, evaluating dynamic class loading, illicit permission hooks, and C2 beacons.
+- **Scheduled Smart Scans**: Background threat engine with customizable frequencies (Daily, Every 3 Days, Weekly), overnight execution windows, and zero-drain charging/idle locks.
+- **Quarantine Vault**: Isolated containment with one-tap restoration or permanent cryptographic file shredding.
 
-### 2. 👁️ Sensor Privacy & Permission Hardener
-- **Hardware Killswitches**: Instant software-level disconnection of Camera and Microphone sensors.
-- **Permission Matrix**: Granular auditing and revoking of sensitive permissions (Contacts, SMS, Location, Background Storage).
-- **Clipboard Guard**: Auto-purges sensitive clipboard buffers to prevent third-party app spying.
+### 2. 🛡️ Zero-Click Exploit Hardening & Media Blastdoor
+- **Blastdoor Mitigations**: Isolated rendering for MMS, iMessage, and RCS media streams to prevent zero-click RCE payloads (e.g. Pegasus archetypes).
+- **Hardening Toggles**: WebGL & JIT compiler lockdown, USB debugging locks, baseband cellular hardening, and NFC proximity shields.
+- **Live Exploit Simulation Sandbox**: Interactive testing of WebP chunk heap overflows, TIFF integer wraps, and PDF font parser exploits.
 
-### 3. 🚨 Anti-Theft & Rapid Response Armory
-- **Precision GPS Locator**: Real-time geolocation tracking with accuracy radius telemetry.
+### 3. 👁️ Sensor Privacy & Permission Matrix
+- **Hardware Bus Killswitches**: Instant software-level disconnection and DMA buffer clearing for Camera and Microphone sensors.
+- **App Permission Matrix**: Auditing and granular revocation of dangerous privileges (SMS, Contacts, Background Location, Accessibility, Overlay).
+- **Clipboard Sanitizer**: Automatic memory buffer wipe with configurable expiration timers.
+
+### 4. 🚨 Anti-Theft & Rapid Response Armory
+- **Precision GPS Locator**: Live coordinates, accuracy radius, and location history tracking.
 - **Decoy Intruder Trap**: Secret automated front-camera snapshot capture upon failed PIN attempts.
-- **105dB Deterrent Siren**: High-intensity auditory alarm using Web Audio API synthesis.
-- **Remote Lockdown & Enclave Wipe**: Full-screen lockout overlay requiring biometric/PIN recovery, with irreversible remote data wipe.
+- **105dB Deterrent Siren**: High-intensity polyphonic auditory alarm generated via the Web Audio API.
+- **Remote Lockdown & Enclave Wipe**: Full-screen lockout overlay requiring recovery credentials, with irreversible remote data wipe simulation.
 
-### 4. 🌐 Network Defense & Zero-Log VPN
-- **Encrypted WireGuard Tunneling**: Direct AES-256 routing through Zurich, Tokyo, Frankfurt, and Virginia nodes.
+### 5. 🌐 Network Defense & VPN Gateway
+- **Zero-Log VPN Relay**: Multi-node proxy selector (Zurich, Tokyo, Frankfurt, Virginia) with live ping latency and throughput telemetry.
 - **Wi-Fi ARP & SSL Stripping Sentry**: Continuous analysis of gateway MAC addresses and certificate spoofing on public networks.
-- **DNS Leak Prevention**: Enforces DNS-over-HTTPS (DoH) to bypass ISP tracking.
+- **DNS Leak Protection**: Enforces DNS-over-HTTPS (DoH) with ad tracker and malicious domain blocking counters.
 
-### 5. 🔐 Encrypted Vault & Application Locker
-- **Client-Side Cryptography**: Zero-knowledge encryption with AES-GCM-256 and PBKDF2 key derivation.
-- **Biometric / PIN Decoy System**: Dual-PIN architecture (Master vs. Decoy) to protect against forced disclosure.
-- **App Lock**: Passcode enforcement on sensitive applications (Banking, WhatsApp, Gallery).
+### 6. 🔐 Encrypted Vault & Application Locker
+- **Client-Side Cryptography**: Zero-knowledge encryption with AES-GCM-256 and PBKDF2 key derivation (100,000 iterations).
+- **Plausible Deniability (Decoy PIN)**: Dual-PIN architecture (Master vs. Decoy) displaying benign decoy content if forced to unlock.
+- **App Locker**: Passcode enforcement on sensitive applications (Banking, WhatsApp, Gallery).
 
-### 6. 🤖 AI Scam & Smishing Advisor
-- **Neural Threat Dissection**: Analyzes SMS messages, emails, phishing links, and deceptive invoices for social engineering tactics.
-- **Confidence Scoring & Remediation**: Delivers step-by-step containment instructions.
+### 7. 🤖 AI Scam & Smishing Advisor
+- **Neural Threat Dissection**: Ingests SMS, emails, and scam URLs, leveraging Google Gemini AI (`gemini-3.7-flash`) with structured risk scoring and actionable remediation steps.
+- **Interactive Security Advisor**: Conversational cyber consultant answering questions on permissions, SIM-swap protection, and mobile hygiene.
+- **Resilient Local Heuristics**: Automated regex and behavioral heuristic fallback for offline or unauthenticated scenarios.
 
-### 7. 📊 Diagnostics, Hardware Integrity & System Health
-- **Hardware Sensor Integrity Watchdog**: Periodic low-level polling of Camera, Microphone, GPS GNSS (L1/L5), and Titan M2 / FIDO2 Biometric Enclave.
-- **Web API Real-Time Verification**: Live browser probing via `navigator.mediaDevices`, `navigator.permissions`, `navigator.geolocation`, and `PublicKeyCredential`.
-- **Hardware Killswitches & Intrusion Isolation**: One-tap physical bus disconnection and DMA buffer emptying for rogue apps.
-- **Resource Profiling & Boot Attestation**: Real-time CPU, RAM, Battery thermals, SELinux enforcement, Knox warranty bit, and storage telemetry.
-- **Memory Purge & Service Optimization**: Background process garbage collector and junk cache cleaner.
+### 8. 📊 Hardware Diagnostics & Forensic PDF/JSON Export
+- **Live Web API Sensor Probing**: Validates hardware access across `navigator.mediaDevices`, `navigator.permissions`, `navigator.geolocation`, and `window.PublicKeyCredential`.
+- **System Telemetry**: Battery thermals, CPU load, memory utilization, storage volumes, and Knox / Secure Enclave attestation status.
+- **Forensic PDF Audit Certificate**: Client-side **jsPDF** engine producing official, tamper-evident PDF reports with cryptographic SHA-256 verification and event timelines.
+- **Machine-Readable JSON Dump**: Raw telemetry export for SIEM ingestion and offline forensics.
 
-### 8. 🎨 UI Experience & Intelligent Micro-Animations
-- **Light & Dark Theme Engine**: Seamless dual-theme support with persistent user preference and ambient glow adaptations.
-- **Micro-Animations & Visual Physics**: Biometric scanning laser waves, radar sweep sweeps, spring transitions, and interactive tactical audio feedback via the Web Audio API.
+---
+
+## 🔒 Scope & Product Boundaries: What This Product Does & Does NOT Do
+
+| Feature Area | ✅ What This Product DOES | ❌ What This Product DOES NOT |
+| :--- | :--- | :--- |
+| **Malware & Threats** | Dissects APK manifests, matches signatures, simulates sandbox analysis, and provides quarantine/shredding. | Does not execute native ring-0 kernel driver modifications or flash OS firmware directly. |
+| **Hardware Privacy** | Intercepts Web API media tracks, silences streams, and revokes browser-level hardware permissions. | Does not physically sever electronic motherboard circuits. |
+| **Network & VPN** | Simulates multi-region WireGuard relays, monitors ARP table anomalies, and filters DNS domains. | Does not install a native virtual network adapter (TUN/TAP) into the host operating system. |
+| **Anti-Theft & SOS** | Generates 105dB synthetic sirens, tracks geolocation, takes intruder snapshots, and logs dispatch telemetry. | Does not place real carrier voice calls to 911 or dispatch physical first responders. |
+| **AI Threat Intelligence** | Uses Google Gemini AI and local heuristic engines to dissect smishing and social engineering attacks. | Does not replace human legal or corporate incident response teams. |
 
 ---
 
@@ -62,9 +76,10 @@ Designed with a high-performance **Express + React 19 + TypeScript** architectur
 | Layer | Technologies |
 | :--- | :--- |
 | **Frontend UI** | React 19, TypeScript, Tailwind CSS v4, Motion (`motion/react`), Lucide React |
-| **Backend API** | Node.js, Express, TypeScript (`tsx`), `esbuild` |
+| **Backend Server** | Node.js, Express, TypeScript (`tsx`), `esbuild` |
+| **Forensic PDF** | `jspdf` (Client-side vector report generation) |
 | **Audio Sensors** | Web Audio API Real-time Polyphonic Synthesizer |
-| **Security & Crypto** | Web Crypto API (AES-GCM, SHA-256, PBKDF2) |
+| **Security & Crypto** | Web Crypto API (AES-GCM-256, SHA-256, PBKDF2) |
 | **AI Integration** | Google Gemini API via `@google/genai` |
 
 ---
@@ -83,9 +98,6 @@ git clone https://github.com/aegis-security/aegis-mobile-guardian.git
 # Install dependencies
 npm install
 
-# Configure environment variables
-cp .env.example .env
-
 # Start development server (Port 3000)
 npm run dev
 ```
@@ -98,11 +110,13 @@ npm start
 
 ---
 
-## 📜 Compliance & Security Accreditations
-- **ISO/IEC 27001:2022** Certified Information Security Management.
-- **SOC 2 Type II** Zero-Knowledge Telemetry Compliance.
-- **GDPR & CCPA** Compliant On-Device Processing.
-- **Samsung Knox & Android Enterprise** Compatible.
+## 📄 Documentation Index
+- [`AUDIT_REPORT.md`](AUDIT_REPORT.md) — Comprehensive Full-Stack Audit, Gap Analysis & Boundary Definition
+- [`API.md`](API.md) — REST API Endpoints and Payloads
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — Defense-in-Depth Architectural Specifications
+- [`FORENSIC_ARCHITECTURE.md`](FORENSIC_ARCHITECTURE.md) — Deterministic Phishing DNA & STIX 2.1 Engine
+- [`THREAT_MODEL.md`](THREAT_MODEL.md) — STRIDE Threat Model & Scenario Analysis
+- [`SECURITY_COMPLIANCE.md`](SECURITY_COMPLIANCE.md) — Regulatory Governance (GDPR, SOC 2, ISO 27001)
 
 ---
 

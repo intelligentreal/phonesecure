@@ -6,7 +6,8 @@ import {
   DeviceHardwareHealth,
   SecurityEventLog,
   AntiTheftConfig,
-  NetworkSecurityConfig
+  NetworkSecurityConfig,
+  ScheduledScanConfig
 } from '../types';
 
 export const INITIAL_THREATS: ThreatItem[] = [
@@ -301,6 +302,18 @@ export const INITIAL_HARDWARE: DeviceHardwareHealth = {
   securityPatchDate: 'August 1, 2026',
   rootJailbreakDetected: false,
   secureEnclaveActive: true
+};
+
+export const INITIAL_SCHEDULED_SCAN: ScheduledScanConfig = {
+  enabled: true,
+  frequency: 'daily',
+  preferredTime: '03:00',
+  requireCharging: true,
+  requireIdle: true,
+  scanScope: 'full_system',
+  autoQuarantineCritical: true,
+  lastScanTimestamp: 'Today at 03:04 AM',
+  lastScanThreatsFound: 0
 };
 
 export const INITIAL_LOGS: SecurityEventLog[] = [

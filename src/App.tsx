@@ -23,7 +23,8 @@ import {
   INITIAL_NETWORK,
   INITIAL_VAULT_ITEMS,
   INITIAL_HARDWARE,
-  INITIAL_LOGS
+  INITIAL_LOGS,
+  INITIAL_SCHEDULED_SCAN
 } from './data/initialData';
 
 import {
@@ -36,7 +37,8 @@ import {
   VaultSecretItem,
   SecurityEventLog,
   IntruderLog,
-  VpnServer
+  VpnServer,
+  ScheduledScanConfig
 } from './types';
 
 import { soundFx } from './utils/audioSensors';
@@ -53,6 +55,7 @@ export default function App() {
   const [vaultItems, setVaultItems] = useState<VaultSecretItem[]>(INITIAL_VAULT_ITEMS);
   const [hardware, setHardware] = useState(INITIAL_HARDWARE);
   const [eventLogs, setEventLogs] = useState<SecurityEventLog[]>(INITIAL_LOGS);
+  const [scheduledScan, setScheduledScan] = useState<ScheduledScanConfig>(INITIAL_SCHEDULED_SCAN);
 
   // Active Shields & Killswitches
   const [realTimeShieldActive, setRealTimeShieldActive] = useState(true);
@@ -358,6 +361,9 @@ export default function App() {
                   setIsScanning(true);
                   soundFx.playRadarBeep();
                 }}
+                scheduledScan={scheduledScan}
+                onUpdateScheduledScan={setScheduledScan}
+                onLogSecurityEvent={(log) => setEventLogs((prev) => [log, ...prev.slice(0, 19)])}
               />
             )}
 
@@ -416,6 +422,11 @@ export default function App() {
                 hardware={hardware}
                 onOptimizeRam={handleOptimizeRam}
                 isOptimizing={isOptimizingRam}
+                healthScore={healthScore}
+                threats={threats}
+                network={networkConfig}
+                scheduledScan={scheduledScan}
+                eventLogs={eventLogs}
                 onLogSecurityEvent={(log) => setEventLogs((prev) => [log, ...prev.slice(0, 19)])}
               />
             )}

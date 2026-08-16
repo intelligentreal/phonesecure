@@ -1,6 +1,6 @@
-# Aegis Secure REST API Specification
+# PhoneSecure Mobile Guardian REST API Specification
 
-This document details the backend REST API endpoints exposed by the Aegis Secure server.
+This document details the backend REST API endpoints exposed by the PhoneSecure Guardian server (`server.ts`).
 
 ---
 
@@ -14,7 +14,7 @@ http://localhost:3000/api
 ## Endpoints
 
 ### 1. System Health & Gateway Check
-Returns current server status and active engine telemetry.
+Returns current server operational status, Gemini API key presence, and timestamp.
 
 - **Method**: `GET`
 - **Path**: `/api/health`
@@ -24,57 +24,84 @@ Returns current server status and active engine telemetry.
 ```json
 {
   "status": "ok",
-  "service": "Aegis Secure Mobile Guardian",
-  "version": "5.2.0-enterprise",
-  "timestamp": "2026-08-14T22:30:00.000Z",
-  "telemetry": {
-    "engine": "active",
-    "threatDatabaseVersion": "2026.08.14-r4",
-    "tunnelNodesOnline": 4
-  }
+  "hasGeminiKey": true,
+  "timestamp": "2026-08-15T18:00:00.000Z"
 }
 ```
 
 ---
 
 ### 2. AI Threat & Scam Analysis
-Inspects suspicious text, SMS messages, phishing URLs, or email headers using Google Gemini neural models.
+Inspects suspicious text, SMS messages, phishing URLs, or APK metadata using Google Gemini (`gemini-3.7-flash`) with structured JSON schema or offline heuristics fallback.
 
 - **Method**: `POST`
-- **Path**: `/api/ai-advisor`
+- **Path**: `/api/security/analyze`
 - **Headers**: `Content-Type: application/json`
 
 #### Request Body
 ```json
 {
-  "content": "URGENT: Your bank account has been suspended. Click http://secure-bank-verify.cc/login to unlock immediately.",
-  "type": "sms"
+  "type": "scam_sms_phishing",
+  "content": "CHASE ALERT: A wire transfer of $1,450.00 was attempted. If NOT you, verify at https://chase-auth-alert.top",
+  "metadata": { "timestamp": "2026-08-15T18:00:00.000Z" }
 }
 ```
 
 #### Success Response (`200 OK`)
 ```json
 {
-  "isScam": true,
+  "threatScore": 94,
   "riskLevel": "CRITICAL",
-  "threatType": "Smishing & Credential Harvester",
-  "analysis": "The message creates false urgency regarding bank account suspension and redirects to an unverified typo-squatted domain (.cc).",
+  "category": "Phishing / Smishing",
+  "analysis": "The message creates artificial urgency regarding unauthorized wire transfers to harvest banking credentials via an unverified top-level domain.",
   "indicators": [
-    "High-pressure urgent language",
-    "Suspicious non-standard TLD (.cc)",
-    "Unsolicited account security claim"
+    "Urgent financial loss coercion",
+    "Spoofed bank authentication link",
+    "High-risk non-banking TLD"
   ],
   "recommendations": [
-    "Do not click the embedded URL",
-    "Block the sending telephone number",
-    "Log into your official banking app directly to verify account status"
-  ]
+    "Do not click the embedded link",
+    "Block the sending telephone number immediately",
+    "Forward to 7726 (SPAM)"
+  ],
+  "isSimulated": false
 }
 ```
 
 ---
 
-### 3. VPN Gateway Node Discovery
+### 3. AI Cyber Security Advisor Live Chat
+Conversational mobile cybersecurity assistant answering queries on threat remediation, permissions, and device hardening.
+
+- **Method**: `POST`
+- **Path**: `/api/security/chat`
+- **Headers**: `Content-Type: application/json`
+
+#### Request Body
+```json
+{
+  "messages": [
+    { "role": "user", "content": "How do I protect against Pegasus zero-click spyware on Android?" }
+  ],
+  "deviceState": {
+    "healthScore": 94,
+    "os": "Android 15",
+    "shield": "Active"
+  }
+}
+```
+
+#### Success Response (`200 OK`)
+```json
+{
+  "reply": "🛡️ **PhoneSecure Zero-Click Mitigation Protocol**:\n- Keep OS security patches updated monthly.\n- Disable auto-downloading of MMS/RCS attachments.\n- Enable Lockdown Mode to restrict JIT compiling and WebGL parsers.\n- Reboot device daily to flush non-persistent memory payloads.",
+  "isSimulated": false
+}
+```
+
+---
+
+### 4. VPN Gateway Node Discovery
 Retrieves available zero-log WireGuard proxy servers and current latency metrics.
 
 - **Method**: `GET`
@@ -89,19 +116,11 @@ Retrieves available zero-log WireGuard proxy servers and current latency metrics
       "id": "node-ch-1",
       "country": "Switzerland",
       "city": "Zurich",
+      "flag": "🇨🇭",
       "ip": "185.156.72.41",
-      "pingMs": 42,
-      "load": 28,
-      "features": ["Zero-Log", "Double-Hop", "Tor-Over-VPN"]
-    },
-    {
-      "id": "node-jp-1",
-      "country": "Japan",
-      "city": "Tokyo",
-      "ip": "103.208.220.19",
-      "pingMs": 110,
-      "load": 45,
-      "features": ["Zero-Log", "High-Bandwidth"]
+      "pingMs": 38,
+      "load": 24,
+      "features": ["Zero-Log", "Double-Hop", "WireGuard-ChaCha20"]
     }
   ]
 }
@@ -109,7 +128,7 @@ Retrieves available zero-log WireGuard proxy servers and current latency metrics
 
 ---
 
-### 4. Emergency SOS Dispatch & Telemetry Beacon
+### 5. Emergency SOS Dispatch & Telemetry Beacon
 Dispatches emergency location coordinates and triggers distress sirens.
 
 - **Method**: `POST`
@@ -120,13 +139,12 @@ Dispatches emergency location coordinates and triggers distress sirens.
 ```json
 {
   "deviceId": "s24-ultra-knox-alpha7",
-  "timestamp": "2026-08-14T22:35:10.000Z",
   "location": {
     "latitude": 47.3769,
     "longitude": 8.5417,
-    "accuracy": 4.2
+    "accuracy": 4.5
   },
-  "batteryLevel": 84,
+  "batteryLevel": 88,
   "triggerReason": "MANUAL_SOS_ENGAGED"
 }
 ```
@@ -135,7 +153,14 @@ Dispatches emergency location coordinates and triggers distress sirens.
 ```json
 {
   "acknowledged": true,
-  "dispatchId": "dispatch-994102-sos",
+  "dispatchId": "dispatch-1755280000000-sos",
+  "timestamp": "2026-08-15T18:00:00.000Z",
+  "telemetry": {
+    "deviceId": "s24-ultra-knox-alpha7",
+    "location": { "latitude": 47.3769, "longitude": 8.5417, "accuracy": 4.5 },
+    "batteryLevel": 88,
+    "triggerReason": "MANUAL_SOS_ENGAGED"
+  },
   "emergencySmsSent": true,
   "recipient": "+1 (555) 911-0199"
 }

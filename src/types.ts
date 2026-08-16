@@ -126,10 +126,23 @@ export interface DeviceHardwareHealth {
   secureEnclaveActive: boolean;
 }
 
+export interface ScheduledScanConfig {
+  enabled: boolean;
+  frequency: 'daily' | 'every_3_days' | 'weekly';
+  preferredTime: string; // e.g. "03:00"
+  requireCharging: boolean;
+  requireIdle: boolean;
+  scanScope: 'full_system' | 'quick_heuristic' | 'zero_click_memory';
+  autoQuarantineCritical: boolean;
+  lastScanTimestamp?: string;
+  lastScanThreatsFound?: number;
+  isSimulatingScheduledExecution?: boolean;
+}
+
 export interface SecurityEventLog {
   id: string;
   timestamp: string;
-  type: 'scan' | 'threat_blocked' | 'anti_theft' | 'permission_revoked' | 'vpn' | 'vault';
+  type: 'scan' | 'threat_blocked' | 'anti_theft' | 'permission_revoked' | 'vpn' | 'vault' | 'diagnostics' | 'export';
   title: string;
   description: string;
   severity: SecuritySeverity | 'safe';

@@ -87,7 +87,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     {
       id: 'scanner',
       title: 'Threat Scanner & Sandbox',
-      description: 'Heuristic APK signatures, trojans, ransomware, and quarantine containment sandbox.',
+      description: 'Radial progress scanner, heuristic signatures, overnight scheduled scans, and quarantine sandbox.',
       icon: <ScanSearch className="w-4 h-4 text-rose-400" />,
       badge: activeThreats.length > 0 ? `${activeThreats.length} ISSUES` : 'SECURED',
       badgeColor: activeThreats.length > 0 ? 'bg-rose-950/80 text-rose-400 border-rose-800' : 'bg-emerald-950/80 text-emerald-400 border-emerald-800',
@@ -158,10 +158,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     },
     {
       id: 'diagnostics',
-      title: 'Hardware Sensor Integrity',
-      description: 'Low-level kernel bus attestation, Web API real-time verification, and SOC battery thermals.',
+      title: 'Hardware Diagnostics & Log Export',
+      description: 'Low-level kernel bus attestation, SOC battery thermals, and tamper-evident PDF/JSON audit log export.',
       icon: <Activity className="w-4 h-4 text-cyan-400" />,
-      badge: 'ATTESTATION',
+      badge: 'PDF / JSON AUDIT',
       badgeColor: 'bg-cyan-950/80 text-cyan-300 border-cyan-800',
       tag: 'TEE ENCLAVE'
     }

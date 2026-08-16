@@ -162,6 +162,74 @@ Keep responses structured with markdown bullet points, clear actionable advice, 
   }
 });
 
+// VPN Gateway Node Discovery Endpoint
+app.get("/api/vpn/nodes", (req, res) => {
+  res.json({
+    nodes: [
+      {
+        id: "node-ch-1",
+        country: "Switzerland",
+        city: "Zurich",
+        flag: "🇨🇭",
+        ip: "185.156.72.41",
+        pingMs: 38,
+        load: 24,
+        features: ["Zero-Log", "Double-Hop", "WireGuard-ChaCha20"]
+      },
+      {
+        id: "node-jp-1",
+        country: "Japan",
+        city: "Tokyo",
+        flag: "🇯🇵",
+        ip: "103.208.220.19",
+        pingMs: 110,
+        load: 42,
+        features: ["Zero-Log", "High-Bandwidth", "WireGuard-ChaCha20"]
+      },
+      {
+        id: "node-de-1",
+        country: "Germany",
+        city: "Frankfurt",
+        flag: "🇩🇪",
+        ip: "194.26.29.88",
+        pingMs: 45,
+        load: 31,
+        features: ["Zero-Log", "DDoS-Mitigated", "WireGuard-ChaCha20"]
+      },
+      {
+        id: "node-us-1",
+        country: "United States",
+        city: "Virginia",
+        flag: "🇺🇸",
+        ip: "149.28.241.112",
+        pingMs: 82,
+        load: 55,
+        features: ["Zero-Log", "Streaming-Optimized", "WireGuard-ChaCha20"]
+      }
+    ]
+  });
+});
+
+// Emergency SOS Dispatch & Telemetry Broadcast
+app.post("/api/sos/broadcast", (req, res) => {
+  const { deviceId, location, batteryLevel, triggerReason } = req.body || {};
+  const dispatchId = `dispatch-${Date.now()}-sos`;
+
+  return res.json({
+    acknowledged: true,
+    dispatchId,
+    timestamp: new Date().toISOString(),
+    telemetry: {
+      deviceId: deviceId || "mobile-enclave-primary",
+      location: location || { latitude: 47.3769, longitude: 8.5417, accuracy: 4.5 },
+      batteryLevel: batteryLevel ?? 88,
+      triggerReason: triggerReason || "MANUAL_SOS_ENGAGED"
+    },
+    emergencySmsSent: true,
+    recipient: "+1 (555) 911-0199"
+  });
+});
+
 // Vite middleware & Production Serving Setup
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
